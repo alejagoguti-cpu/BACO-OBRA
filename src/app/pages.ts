@@ -34,8 +34,86 @@ const segObra = () => `<div class="seg">${[6, 8, 9].map((n) => `<button data-act
 const stepper = () => `<div class="stepper"><button class="circle light" data-act="mes" data-v="-1" aria-label="Mes anterior">${ic('left')}</button><span>Mes ${S.mes} / ${T()}</span><button class="circle" data-act="mes" data-v="1" aria-label="Mes siguiente">${ic('right')}</button></div>`;
 const IMGS = [['img/suite.webp', 'Suite tipo', 'Render de la remodelación'], ['img/bano.webp', 'Baño de suite', 'Render de la remodelación'], ['img/axo.webp', 'Suite C1', 'Axonometría de acabados']];
 
-/* ================= PANEL ================= */
+/* ================= PANEL (DIFERENCIADO POR ROL) ================= */
+export function vPanelContratista(): string {
+  const ob = OBRA ? totalObra() : { prog: 0, real: 0, n: 0, hechas: 0 };
+  const sems = semanas(); const tC = corte();
+  let si = S.semana; if (si < 0 || si >= sems.length) si = Math.max(0, sems.findIndex((w) => tC >= w.ini && tC <= w.fin + DIA));
+  const w = sems[si];
+  const eUser = espDe(S.espUser || 'arq');
+  const novAll = listaNovedades();
+  const novMias = S.espUser && S.espUser !== 'coo' ? novAll.filter((n) => n.esp === S.espUser) : novAll;
+  const abMias = novMias.filter((n) => n.estado !== 'Cerrada');
+  const cerrMias = novMias.length - abMias.length;
+  const allActs = w ? actsSemana(w.ini, w.fin + DIA - 1) : [];
+  const actsMias = S.espUser && S.espUser !== 'coo' ? allActs.filter((a) => a.esp === S.espUser) : allActs;
+  const actsDisplay = actsMias.length ? actsMias : allActs;
+  const avEsp = OBRA ? porEsp(S.espUser === 'est' || S.espUser === 'rci' ? 'arq' : S.espUser || 'arq') : { prog: 0, real: 0, n: 0, hechas: 0 };
+  const colorHab = (p: number) => `color-mix(in srgb, var(--teal) ${Math.round(14 + p * 86)}%, var(--soft))`;
+  const fd = (s: string) => fechaCorta(new Date(s + 'T12:00').getTime());
+  const novPorHab = new Map<string, number>();
+  novAll.forEach((nv) => { if (nv.estado !== 'Cerrada' && nv.loc.startsWith('HAB-')) { const hk = nv.loc.slice(4); novPorHab.set(hk, (novPorHab.get(hk) ?? 0) + 1); } });
+  const nombre = S.nombreUser || `Equipo ${eUser.corto}`;
+
+  return `${head(
+    `Dashboard Técnico de Obra · Torre Suites Piso 2 · Especialidad: ${eUser.n}`,
+    `Hola, <b>${esc(nombre)}</b>. Tu frente en obra`,
+    `<div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center">
+      <div class="kchip"><span class="ic2" style="background:${eUser.c};color:#fff">${ic(eUser.ic)}</span><span><b>${cnt(avEsp.real * 100, 'pct')}</b><small>Avance ${eUser.corto}</small></span></div>
+      <div class="kchip"><span class="ic2">${ic('bell')}</span><span><b>${cnt(abMias.length)}</b><small>Pendientes ${eUser.corto}</small></span></div>
+      <button class="btn coral" data-act="reportar">${ic('camera')} Reportar en obra</button>
+    </div>`
+  )}
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-top:-8px">
+    <p class="muted">Filtra tu especialidad activa para resaltar tus redes en 3D, tareas de la semana y RFI/interferencias:</p>
+    <div class="chiprow">${ESPECIALIDADES.map((e) => `<button class="chip" data-act="setEspUser" data-v="${e.id}" aria-pressed="${S.espUser === e.id}"><span class="sw" style="background:${e.c}"></span>${e.corto}</button>`).join('')}</div>
+  </div>
+  <div class="cols">
+    <div class="col">
+      <section class="card glow"><div class="chead" style="align-items:center"><div style="display:flex;gap:12px;align-items:center"><span class="badge" style="background:${eUser.c}">${ic(eUser.ic, 2.2)}</span><div><h2>Frente ${eUser.corto}</h2><p class="sub">${eUser.desc}</p></div></div></div>
+        <div class="minis">
+          <div class="mini"><small>Real especialidad</small><b style="color:var(--teal);font-size:17px">${Math.round(avEsp.real * 100)}%</b></div>
+          <div class="mini"><small>Meta semana ${w?.label ?? 'S4'}</small><b style="font-size:17px">${Math.round(avEsp.prog * 100)}%</b></div>
+          <div class="mini"><small>Tareas cumplidas</small><b style="font-size:17px">${avEsp.hechas} / ${avEsp.n}</b></div>
+        </div>
+        <div class="pl"><span>Cumplimiento frente al cronograma</span><b>${Math.round(avEsp.real * 100)}% vs. ${Math.round(avEsp.prog * 100)}%</b></div>
+        <div class="pbar"><i style="width:${avEsp.real * 100}%;background:${eUser.c}"></i></div>
+        <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap">
+          <button class="btn pri" data-act="abrirBim" data-v="${eUser.id}" style="flex:1">${ic('eye')} Abrir 3D ${eUser.corto}</button>
+          <a class="btn" href="#qr" style="flex:1">${ic('novedades')} QR de puertas</a>
+        </div>
+      </section>
+      <section class="card"><div class="chead"><div><h2>Coordinación técnica BIM</h2><p class="sub">Avance físico por frente · toca para abrir en 3D</p></div><a class="circle" href="#avance" aria-label="Ver avance semanal">${ic('arrow')}</a></div>
+        ${(['arq', 'hid', 'ele', 'coo'] as const).map((e, k) => { const d = espDe(e), a = OBRA ? porEsp(e) : { prog: 0, real: 0 }; return `<button class="hbar" data-act="abrirBim" data-v="${e}" style="width:100%;text-align:left"><span>${e === 'coo' ? 'Pruebas y entrega' : d.corto}</span><span class="tr2 dual"><i style="--k:${k};width:${a.prog * 100}%;background:color-mix(in srgb,${d.c} 28%,transparent)"></i><i style="--k:${k};width:${a.real * 100}%;background:${d.c}"></i></span><b>${Math.round(a.real * 100)}%</b></button>`; }).join('')}
+      </section>
+    </div>
+    <div class="col">
+      <section class="card"><div class="chead"><div><h2>Checklist de campo · ${w?.label ?? ''}</h2><p class="sub">${actsDisplay.length} tareas ${actsMias.length ? `de ${eUser.corto}` : 'en la semana'} · marca al terminar en sitio</p></div><a class="circle" href="#avance" aria-label="Ver todas">${ic('arrow')}</a></div>
+        <div class="scrollbox" style="max-height:330px">${actsDisplay.slice(0, 18).map((a) => { const d = espDe(a.esp), done = realAct(a) >= 1; return `<label class="check ${done ? 'done' : ''}"><input type="checkbox" data-act="hecho" data-v="${esc(a.id)}" ${done ? 'checked' : ''}><span class="bx">${ic('check', 3)}</span><span class="tx" style="flex:1"><b>Hab. ${a.hab} · ${esc(a.fase.replace(/^\d+\.\s*/, ''))}</b><small><span style="color:${d.c};font-weight:900">●</span> ${esc(a.quien)} · ${fd(a.ini)}–${fd(a.fin)}</small></span></label>`; }).join('') || '<p class="muted">Sin actividades pendientes en esta semana.</p>'}</div>
+      </section>
+      <section class="card"><div class="chead"><div><h2>Mapa rápido de habitaciones Piso 2</h2><p class="sub">Toca cualquier habitación (214–225) para abrir su ficha técnica o reportar</p></div></div>
+        <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px">${(OBRA?.habitaciones ?? []).map((hb, k) => {
+          const a = porHab(hb.hab);
+          const nAb = novPorHab.get(hb.hab) ?? 0;
+          return `<button class="hab" data-act="habDetalle" data-v="${hb.hab}" style="--k:${k};min-height:74px;padding:10px;background:${colorHab(a.real)}"><b>${hb.hab}</b><small>${Math.round(a.real * 100)}%</small>${nAb ? `<span class="hnov" style="bottom:8px;right:8px">${nAb}</span>` : ''}</button>`;
+        }).join('')}</div>
+      </section>
+    </div>
+    <div class="col">
+      <section class="card"><div class="chead"><div><h2>Mis RFI e interferencias</h2><p class="sub">${abMias.length} abiertas · ${cerrMias} resueltas en ${eUser.corto}</p></div><a class="circle" href="#novedades" aria-label="Ir a novedades">${ic('arrow')}</a></div>
+        <div class="gwrap" style="margin-bottom:10px"><div><div class="big">${cnt(novMias.length)}</div><small>${abMias.length} por resolver en obra</small></div>${gauge(novMias.length ? cerrMias / novMias.length : 1, 'var(--coral)', 'Novedades cerradas')}</div>
+        <div class="list">${abMias.slice(0, 4).map(rowNov).join('') || '<p class="muted" style="padding:10px 0">¡Todo al día! No tienes interferencias abiertas en esta especialidad.</p>'}</div>
+      </section>
+      <section class="card"><div class="chead"><div><h2>Entregables técnicos LOD 400</h2><p class="sub">${entP().d} de ${entP().t} validados en CDE (ISO 19650)</p></div><a class="circle" href="#entregables" aria-label="Ver entregables">${ic('arrow')}</a></div>
+        <div class="pl"><span>Avance global piso 2</span><b>${Math.round(ob.real * 100)}%</b></div>
+        <div class="pbar"><i style="width:${ob.real * 100}%"></i></div>
+      </section>
+    </div>
+  </div>`;
+}
+
 export function vPanel(): string {
+  if (S.rol === 'contratista') return vPanelContratista();
   if (S.mes > T()) S.mes = T();
   const et = etapa(S.mes), [a, b] = span(et), pE = Math.min(1, (S.mes - a + 1) / (b - a + 1));
   const ps = pagos(), fact = ps.filter(paid).reduce((s, p) => s + p.v, 0), tot = total();
@@ -43,7 +121,7 @@ export function vPanel(): string {
   const hoy = new Date();
   const pm = Array(T()).fill(0); ps.forEach((p) => { pm[p.mes - 1] += p.v; });
   const mx = Math.max(...pm), avg = pm.reduce((s, v) => s + v, 0) / pm.length;
-  const bars = pm.map((v, i) => { const h = (v / mx) * 100; return `<div class="cap ${i + 1 < S.mes ? '' : i + 1 === S.mes ? 'now' : 'fut'}" tabindex="0" style="--k:${i};--h:${h}%" aria-label="Mes ${i + 1}: ${fmtM(v)}"><i style="height:${h}%"></i><span class="bub">${fmtM(iv(v))}</span></div>`; }).join('');
+  const bars = pm.map((v, i) => { const h = (v / mx) * 100; return `<button type="button" class="cap ${i + 1 < S.mes ? '' : i + 1 === S.mes ? 'now' : 'fut'}" data-act="setMes" data-v="${i + 1}" style="--k:${i};--h:${h}%" aria-label="Ir al mes ${i + 1}: ${fmtM(v)}"><i style="height:${h}%"></i><span class="bub">M${i + 1} · ${fmtM(iv(v))}</span></button>`; }).join('');
   let acc = 0; const cum = pm.map((v) => (acc += v)); const W = 400, H = 170;
   const pts = cum.map((v, i) => [((i + 0.5) / pm.length) * W, H - (v / acc) * (H - 12)]);
   const line = 'M' + pts.map((p) => p.map((n) => n.toFixed(1)).join(' ')).join(' L');
@@ -55,8 +133,10 @@ export function vPanel(): string {
   const next = ps.filter((p) => !paid(p)).slice(0, 3);
   const ob = OBRA ? totalObra() : { prog: 0, real: 0 };
   const espRow = (e: string, k: number) => { const d = espDe(e), a = OBRA ? porEsp(e) : { prog: 0, real: 0 }; return `<button class="hbar" data-act="abrirBim" data-v="${e}" style="width:100%;text-align:left"><span>${e === 'coo' ? 'Pruebas y entrega' : d.corto}</span><span class="tr2 dual"><i style="--k:${k};width:${a.prog * 100}%;background:color-mix(in srgb,${d.c} 28%,transparent)"></i><i style="--k:${k};width:${a.real * 100}%;background:${d.c}"></i></span><b>${Math.round(a.real * 100)}%</b></button>`; };
-  return `${head('Remodelación Torre Suites · Hotel La Fontana · Piso 2 prototipo', `Hola, <b>Gerencia</b>. Así va la obra`, `<div style="display:flex;gap:20px;flex-wrap:wrap">
+  const nombre = S.nombreUser || 'Gerencia Estelar';
+  return `${head('Dashboard Ejecutivo · Hoteles Estelar · Remodelación Torre Suites Piso 2', `Hola, <b>${esc(nombre)}</b>. Así va la inversión y la obra`, `<div style="display:flex;gap:20px;flex-wrap:wrap">
       <div class="kchip"><span class="ic2">${ic('avance')}</span><span><b>${cnt(ob.real * 100, 'pct')}</b><small>Avance real del piso 2</small></span></div>
+      <div class="kchip"><span class="ic2">${ic('honorarios')}</span><span><b>${cnt(iv(fact), 'M')}</b><small>Inversión ejecutada</small></span></div>
       <div class="kchip"><span class="ic2">${ic('bell')}</span><span><b>${cnt(ab.length)}</b><small>Novedades abiertas</small></span></div></div>`)}
   <p class="muted" style="margin-top:-10px">Hoy es ${hoy.toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })} · mes ${S.mes} de ${T()} del contrato</p>
   <div class="cols">
@@ -119,7 +199,7 @@ export function vPlan(): string {
 }
 
 /* ================= AVANCE SEMANAL (datos reales de la matriz de programación) ================= */
-export function vAvance(): string {
+export function vAvance(habSel = ''): string {
   const total = totalObra;
   if (!OBRA) return `${head('Avance de obra · Piso 2', '<b>Avance</b> de la semana')}<section class="card"><p class="muted">Cargando la programación de obra…</p></section>`;
   const sems = semanas(); const tC = corte();
@@ -133,10 +213,13 @@ export function vAvance(): string {
   const lp = 'M' + cp.map((v, i) => `${x(i).toFixed(1)} ${y(v).toFixed(1)}`).join(' L');
   const area = `${lp} L${x(n - 1)} ${H - 24} L${x(0)} ${H - 24}Z`;
   const ry = y(total().real);
-  const acts = actsSemana(w.ini, w.fin + DIA - 1);
+  const allActs = actsSemana(w.ini, w.fin + DIA - 1);
+  const acts = habSel ? allActs.filter((a) => a.hab === habSel) : allActs;
   const frentes = OBRA.frentes;
   const colorHab = (p: number) => `color-mix(in srgb, var(--teal) ${Math.round(14 + p * 86)}%, var(--soft))`;
   const fd = (s: string) => fechaCorta(new Date(s + 'T12:00').getTime());
+  const novPorHab = new Map<string, number>();
+  listaNovedades().forEach((nv) => { if (nv.estado !== 'Cerrada' && nv.loc.startsWith('HAB-')) { const hk = nv.loc.slice(4); novPorHab.set(hk, (novPorHab.get(hk) ?? 0) + 1); } });
   return `${head(`Avance de obra · Piso 2 · ${OBRA.habitaciones.length} habitaciones · ${frentes.length} frentes`, `<b>Avance</b> de la semana`, `<div class="seg" style="max-width:100%;overflow-x:auto;flex-wrap:nowrap">${sems.map((s, i) => `<button data-act="semana" data-v="${i}" aria-pressed="${si === i}">${s.label}</button>`).join('')}</div>`)}
   <p class="muted" style="margin-top:-8px">Semana ${w.label} · ${fechaCorta(w.ini)} – ${fechaCorta(w.fin)} · inicio ${fd(OBRA.inicio)} · entrega formal ${fd(OBRA.entrega)}</p>
   <div class="g3">
@@ -147,23 +230,23 @@ export function vAvance(): string {
     <section class="card"><div class="chead"><div><h2>Por especialidad</h2><p class="sub">Real sobre programado · toca para ver el modelo</p></div></div>
       ${(['arq', 'hid', 'ele', 'coo'] as const).map((e, k) => { const d = espDe(e), a = porEsp(e, tW); return `<button class="hbar" data-act="abrirBim" data-v="${e}" style="width:100%;text-align:left"><span>${e === 'coo' ? 'Pruebas y entrega' : d.corto}</span><span class="tr2 dual"><i style="--k:${k};width:${a.prog * 100}%;background:color-mix(in srgb,${d.c} 28%,transparent)"></i><i style="--k:${k};width:${a.real * 100}%;background:${d.c}"></i></span><b>${Math.round(a.real * 100)}%</b></button>`; }).join('')}</section>
   </div>
-  <section class="card"><div class="chead"><div><h2>Curva S del piso 2</h2><p class="sub">Avance programado acumulado por semana · línea roja = real reportado</p></div><div style="display:flex;gap:14px;font-size:13px;font-weight:700;flex-wrap:wrap"><span style="display:flex;gap:6px;align-items:center"><i style="width:18px;height:3px;background:var(--sA);border-radius:2px"></i>Programado</span><span style="display:flex;gap:6px;align-items:center"><i style="width:10px;height:10px;border-radius:50%;background:var(--coral)"></i>Real</span></div></div>
+  <section class="card"><div class="chead"><div><h2>Curva S del piso 2</h2><p class="sub">Avance programado acumulado por semana (toca cualquier semana en la curva para inspeccionarla) · línea roja = real reportado</p></div><div style="display:flex;gap:14px;font-size:13px;font-weight:700;flex-wrap:wrap"><span style="display:flex;gap:6px;align-items:center"><i style="width:18px;height:3px;background:var(--sA);border-radius:2px"></i>Programado</span><span style="display:flex;gap:6px;align-items:center"><i style="width:10px;height:10px;border-radius:50%;background:var(--coral)"></i>Real</span></div></div>
     <svg class="curve" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="height:240px" role="img" aria-label="Curva S programada y avance real">
       <defs><linearGradient id="gS" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4F6EF0" stop-opacity=".32"/><stop offset="1" stop-color="#4F6EF0" stop-opacity="0"/></linearGradient></defs>
       ${[0, 0.25, 0.5, 0.75, 1].map((v) => `<line x1="30" x2="${W - 20}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)" stroke-dasharray="3 5"/><text x="0" y="${y(v) + 4}" style="fill:var(--muted);font:700 10px var(--f)">${v * 100}%</text>`).join('')}
-      <rect x="${x(si) - 10}" y="10" width="20" height="${H - 34}" rx="10" fill="var(--soft)"/>
+      <rect x="${x(si) - 12}" y="10" width="24" height="${H - 34}" rx="12" fill="var(--soft)"/>
       <path class="ar" d="${area}" fill="url(#gS)"/>
       <path class="ln" d="${lp}" fill="none" stroke="var(--sA)" stroke-width="3" stroke-linecap="round" vector-effect="non-scaling-stroke"/>
-      ${cp.map((v, i) => `<circle cx="${x(i)}" cy="${y(v)}" r="${i === si ? 6 : 3}" fill="var(--sA)" stroke="var(--card)" stroke-width="2" vector-effect="non-scaling-stroke"/>`).join('')}
+      ${cp.map((v, i) => `<g style="cursor:pointer" data-act="semana" data-v="${i}"><rect x="${x(i) - 18}" y="10" width="36" height="${H - 30}" fill="transparent"/><circle cx="${x(i)}" cy="${y(v)}" r="${i === si ? 7 : 4}" fill="var(--sA)" stroke="var(--card)" stroke-width="2" vector-effect="non-scaling-stroke"/><title>Semana ${sems[i].label}: ${Math.round(v * 100)}% programado</title></g>`).join('')}
       <line x1="30" x2="${W - 20}" y1="${ry}" y2="${ry}" stroke="var(--coral)" stroke-dasharray="2 6" vector-effect="non-scaling-stroke"/>
-      <circle class="pulso" cx="${x(si)}" cy="${ry}" r="7" fill="var(--coral)" stroke="var(--card)" stroke-width="3" vector-effect="non-scaling-stroke"/>
+      <circle class="pulso" cx="${x(si)}" cy="${ry}" r="7" fill="var(--coral)" stroke="var(--card)" stroke-width="3" vector-effect="non-scaling-stroke" style="pointer-events:none"/>
     </svg>
-    <div class="xl" style="padding-left:24px">${sems.map((s, i) => `<span style="${i === si ? 'color:var(--ink);font-weight:800' : ''}">${s.label}</span>`).join('')}</div></section>
-  <section class="card"><div class="chead"><div><h2>Habitaciones del piso 2</h2><p class="sub">Color = avance real · porcentaje = programado a la fecha · toca una para reportar</p></div></div>
-    <div class="frentes">${frentes.map((f) => { const af = porFrente(f.frente, tW); return `<div class="frente"><div class="fhead"><div><b>${f.frente}</b><small>${esc(f.comp)} · ${f.area} m²</small></div>${ring(af.real, 'var(--teal)', 34, 4)}</div><div class="habs">${f.secuencia.split(/\s*→\s*/).map((h, k) => { const hb = OBRA!.habitaciones.find((q) => q.hab === h); const a = porHab(h, tW); return `<button class="hab" data-act="qrProbar" data-v="HAB-${h}" style="--k:${k};background:${colorHab(a.real)}"><b>${h}</b><small>${esc(hb?.tipo ?? '')}</small><span class="hp">${Math.round(a.prog * 100)}%</span><span class="hbar2"><i style="width:${a.real * 100}%"></i></span></button>`; }).join('')}</div></div>`; }).join('')}</div></section>
+    <div class="xl" style="padding-left:24px">${sems.map((s, i) => `<button type="button" data-act="semana" data-v="${i}" style="flex:1;font-size:11.5px;padding:4px 0;border-radius:8px;${i === si ? 'color:var(--ink);font-weight:900;background:var(--soft)' : 'color:var(--muted)'}">${s.label}</button>`).join('')}</div></section>
+  <section class="card"><div class="chead" style="flex-wrap:wrap"><div><h2>Habitaciones del piso 2</h2><p class="sub">Toca una habitación para ver su ficha completa, marcar actividades o reportar novedad</p></div>${habSel ? `<button class="chip" data-act="habFiltro" data-v="">Quitar filtro Hab. ${esc(habSel)} ×</button>` : ''}</div>
+    <div class="frentes">${frentes.map((f) => { const af = porFrente(f.frente, tW); return `<div class="frente"><div class="fhead"><div><b>${f.frente}</b><small>${esc(f.comp)} · ${f.area} m²</small></div>${ring(af.real, 'var(--teal)', 34, 4)}</div><div class="habs">${f.secuencia.split(/\s*→\s*/).map((h, k) => { const hb = OBRA!.habitaciones.find((q) => q.hab === h); const a = porHab(h, tW); const nAb = novPorHab.get(h) ?? 0; return `<button class="hab ${habSel === h ? 'sel' : ''}" data-act="habDetalle" data-v="${h}" style="--k:${k};background:${colorHab(a.real)}"><div><b>${h}</b><small style="display:block">${esc(hb?.tipo ?? '')}</small></div><span class="hp">${Math.round(a.real * 100)}% <small style="opacity:.65">/ ${Math.round(a.prog * 100)}%</small></span>${nAb ? `<span class="hnov" title="${nAb} novedades abiertas">${nAb}</span>` : ''}<span class="hbar2"><i style="width:${a.real * 100}%"></i></span></button>`; }).join('')}</div></div>`; }).join('')}</div></section>
   <div class="g2">
-    <section class="card"><div class="chead"><div><h2>Actividades de la semana</h2><p class="sub">${acts.length} programadas · marca las terminadas</p></div></div>
-      <div class="scrollbox">${acts.slice(0, 40).map((a) => { const d = espDe(a.esp), done = realAct(a) >= 1; return `<label class="check ${done ? 'done' : ''}"><input type="checkbox" data-act="hecho" data-v="${esc(a.id)}" ${done ? 'checked' : ''}><span class="bx">${ic('check', 3)}</span><span class="tx" style="flex:1"><b>Hab. ${a.hab} · ${esc(a.fase.replace(/^\d+\.\s*/, ''))}</b><small><span style="color:${d.c};font-weight:900">●</span> ${esc(a.quien)} · ${fd(a.ini)}–${fd(a.fin)}</small></span></label>`; }).join('') || '<p class="muted">Sin actividades programadas esta semana.</p>'}</div></section>
+    <section class="card" id="secActs"><div class="chead" style="flex-wrap:wrap"><div><h2>Actividades de la semana ${w.label}${habSel ? ` · Hab. ${esc(habSel)}` : ''}</h2><p class="sub">${acts.length} programadas · marca las terminadas</p></div>${habSel ? `<button class="chip" data-act="habFiltro" data-v="">Ver todas (${allActs.length})</button>` : ''}</div>
+      <div class="scrollbox">${acts.slice(0, 40).map((a) => { const d = espDe(a.esp), done = realAct(a) >= 1; return `<label class="check ${done ? 'done' : ''}"><input type="checkbox" data-act="hecho" data-v="${esc(a.id)}" ${done ? 'checked' : ''}><span class="bx">${ic('check', 3)}</span><span class="tx" style="flex:1"><b>Hab. ${a.hab} · ${esc(a.fase.replace(/^\d+\.\s*/, ''))}</b><small><span style="color:${d.c};font-weight:900">●</span> ${esc(a.quien)} · ${fd(a.ini)}–${fd(a.fin)}</small></span></label>`; }).join('') || '<p class="muted">Sin actividades programadas con este filtro en esta semana.</p>'}</div></section>
     <section class="card"><div class="chead"><div><h2>Hitos de control</h2><p class="sub">Condiciones de éxito del comité</p></div></div>
       <div class="timeline2">${OBRA.hitos.map((h, k) => { const t = new Date(h.fecha + 'T12:00').getTime(), pas = t <= tC; return `<div class="th ${pas ? 'pas' : ''}" style="--k:${k}"><span class="tdot"></span><div><b>${esc(h.hito)}</b><small>${fechaCorta(t)} · ${esc(h.quien)}</small><p>${esc(h.resultado)}</p></div><span class="pill ${h.tipo === 'Crítico' ? 'crit' : h.tipo === 'Contractual' ? 'warn' : 'neu'}">${esc(h.tipo)}</span></div>`; }).join('')}</div></section>
   </div>
@@ -176,13 +259,13 @@ export function vAvance(): string {
 export function vProveedores(): string {
   const cnts = { 'Contratado': 0, 'En evaluación': 0, 'Por contratar': 0 } as Record<string, number>;
   S.prov.forEach((p) => cnts[p.estado]++);
-  return `${head('Matriz de responsabilidades de la propuesta', '<b>Proveedores</b> y contratistas', `<div style="display:flex;gap:20px;flex-wrap:wrap">${Object.entries(cnts).map(([k, v]) => `<div class="kchip"><span class="ic2">${ic(k === 'Contratado' ? 'check' : k === 'En evaluación' ? 'clock' : 'plus')}</span><span><b>${v}</b><small>${k}</small></span></div>`).join('')}</div>`)}
+  return `${head('Matriz de responsabilidades de la propuesta', '<b>Proveedores</b> y contratistas', `<div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center">${Object.entries(cnts).map(([k, v]) => `<div class="kchip"><span class="ic2">${ic(k === 'Contratado' ? 'check' : k === 'En evaluación' ? 'clock' : 'plus')}</span><span><b>${v}</b><small>${k}</small></span></div>`).join('')}<button class="chip" data-act="reset" title="Restablecer datos de ejemplo">${ic('reset', 1.8)} Restablecer demo</button></div>`)}
   <div class="g3">${S.prov.map((p, i) => { const e = espDe(p.esp), st = p.estado === 'Contratado' ? 'ok' : p.estado === 'En evaluación' ? 'warn' : 'neu'; return `<section class="card prov">
     <div class="top"><span class="eic2" style="background:${e.c}">${ic(e.ic)}</span><span class="pill ${st}">${p.estado}</span></div>
     <div><h2>${esc(p.nombre)}</h2><p class="sub">${esc(p.rol)}</p></div>
     <div class="pl"><span>Avance de entregables</span><b>${p.avance}%</b></div><div class="pbar"><i style="width:${p.avance}%;background:${e.c}"></i></div>
     <div class="dl" style="gap:8px"><div><span>Próxima entrega</span><b>${esc(p.entrega)}</b></div><div><span>Contacto</span><b>${esc(p.contacto)}</b></div></div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="chip" data-act="provEstado" data-v="${i}">Cambiar estado</button><button class="chip" data-act="provAvance" data-v="${i}">+10% avance</button>${p.ej ? '<span class="pill ex">ejemplo</span>' : ''}</div></section>`; }).join('')}</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><button class="chip" data-act="provEstado" data-v="${i}">Estado ›</button><button class="chip" data-act="provDelta" data-i="${i}" data-v="-10" ${p.avance <= 0 ? 'disabled style="opacity:.4"' : ''}>−10%</button><button class="chip" data-act="provDelta" data-i="${i}" data-v="10" ${p.avance >= 100 ? 'disabled style="opacity:.4"' : ''}>+10%</button>${p.ej ? '<span class="pill ex" style="margin-left:auto">ejemplo</span>' : ''}</div></section>`; }).join('')}</div>
   <section class="card"><h2 style="margin-bottom:10px">Quién responde por qué</h2><div class="list">
     ${[['Proveedor de escaneo', 'Levantamiento 3D y modelo de condiciones existentes LOD 300.'], ['Diseñadores / especialistas', 'Desarrollan y aprueban sus modelos en LOD 400 según la matriz pactada.'], ['Contratistas / fabricantes', 'Modelos de fabricación e instalación, cambios, as-built y datos de equipos.'], ['BACO Studio', 'Requisitos, BEP y CDE, coordinación, verificación de entregas y cierre digital.'], ['Propietario / gerencia', 'Contrata, aprueba, exige cumplimiento y recibe los entregables.']].map(([a, r]) => `<div class="lrow"><span class="avatar" style="background:${a === 'BACO Studio' ? 'var(--teal)' : '#5C6B7A'}">${a.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase()}</span><div class="t"><b>${a}</b><small>${r}</small></div><span></span></div>`).join('')}</div></section>
   <p class="foot-note">Los roles vienen de la propuesta; nombres, estados y avances son de ejemplo hasta que se contraten.</p>`;
@@ -191,12 +274,17 @@ export function vProveedores(): string {
 /* ================= NOVEDADES + QR ================= */
 export function rowNov(n: Novedad): string {
   const e = espDe(n.esp), pr = { Alta: 'crit', Media: 'warn', Baja: 'ok' }[n.prio], st = { Abierta: 'crit', 'En revisión': 'warn', Cerrada: 'ok' }[n.estado];
-  return `<div class="lrow">${n.foto ? `<img class="thumb" src="${n.foto}" alt="">` : `<span class="eic2" style="background:${e.c}">${ic(e.ic)}</span>`}
+  return `<div class="lrow row-click" data-act="verFoto" data-v="${esc(n.id)}" tabindex="0" role="button" aria-label="Ver detalle de novedad ${esc(n.id)}">${n.foto ? `<img class="thumb" src="${n.foto}" alt="">` : `<span class="eic2" style="background:${e.c}">${ic(e.ic)}</span>`}
     <div class="t"><b>${esc(n.txt)}</b><small>${esc(n.id)} · ${esc(ubic(n.loc))} · ${esc(n.tipo)} · ${fecha(n.ts)}${n.ej ? ' · ejemplo' : ''}</small></div>
-    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end"><span class="pill ${pr}">${n.prio}</span><button class="pill ${st}" data-act="novEstado" data-v="${esc(n.id)}" title="Cambiar estado">${n.estado} ›</button>${n.pos ? `<button class="circle sm light" data-act="novVer3d" data-v="${esc(n.id)}" aria-label="Ver en el modelo 3D">${ic('pin')}</button>` : ''}</div></div>`;
+    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end"><span class="pill ${pr}">${n.prio}</span><button class="pill ${st}" data-act="novEstado" data-v="${esc(n.id)}" title="Cambiar estado">${n.estado} ›</button>${n.pos ? `<button class="circle sm light" data-act="novVer3d" data-v="${esc(n.id)}" aria-label="Ver en el modelo 3D" title="Ver punto en modelo 3D">${ic('pin')}</button>` : ''}</div></div>`;
 }
-export function vNovedades(filtro: { esp: string; est: string }): string {
-  const nov = listaNovedades().filter((n) => (filtro.esp === 'todas' || n.esp === filtro.esp) && (filtro.est === 'todas' || (filtro.est === 'abiertas' ? n.estado !== 'Cerrada' : n.estado === 'Cerrada')));
+export function vNovedades(filtro: { esp: string; est: string; q?: string }): string {
+  const fq = (filtro.q ?? '').trim().toLowerCase();
+  const nov = listaNovedades().filter((n) =>
+    (filtro.esp === 'todas' || n.esp === filtro.esp) &&
+    (filtro.est === 'todas' || (filtro.est === 'abiertas' ? n.estado !== 'Cerrada' : n.estado === 'Cerrada')) &&
+    (!fq || n.txt.toLowerCase().includes(fq) || n.id.toLowerCase().includes(fq) || ubic(n.loc).toLowerCase().includes(fq) || n.quien.toLowerCase().includes(fq))
+  );
   const porTipo = TIPOS.map((t) => [t, listaNovedades().filter((n) => n.tipo === t).length] as [string, number]);
   const mx = Math.max(1, ...porTipo.map((x) => x[1]));
   return `${head('Reportes desde obra con código QR', '<b>Novedades</b> y códigos QR', `<div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn coral" data-act="reportar">${ic('camera')} Reportar novedad</button><a class="btn" href="#qr">${ic('novedades')} Ver códigos QR</a></div>`)}
@@ -207,7 +295,8 @@ export function vNovedades(filtro: { esp: string; est: string }): string {
     <section class="card"><div class="chead"><div><h2>Cómo funciona</h2><p class="sub">Tres pasos en obra</p></div></div><div class="list">
       ${[['1', 'Pega el QR', 'Imprime el código de cada habitación o zona del piso 2 y pégalo en la puerta.'], ['2', 'Escanéalo con el celular', 'La cámara abre el formulario con la ubicación ya escogida.'], ['3', 'Toma la foto y envía', 'La novedad aparece aquí, en el avance semanal y en el modelo 3D.']].map(([n, t, d]) => `<div class="lrow"><span class="badge" style="width:36px;height:36px;font-size:14px;background:var(--black);color:var(--onBlack)">${n}</span><div class="t"><b>${t}</b><small>${d}</small></div><span></span></div>`).join('')}</div></section>
   </div>
-  <section class="card"><div class="chead" style="flex-wrap:wrap"><div><h2>Registro</h2><p class="sub">${nov.length} con este filtro</p></div>
+  <section class="card"><div class="chead" style="flex-wrap:wrap;gap:12px"><div><h2>Registro</h2><p class="sub">${nov.length} con este filtro · toca una fila para ver detalle</p></div>
+    <div class="search sm-search" style="flex:1 1 220px;height:40px;box-shadow:none;background:var(--soft)">${ic('search')}<input id="qNov" value="${esc(filtro.q ?? '')}" placeholder="Filtrar por texto, ID o habitación…" aria-label="Filtrar novedades">${filtro.q ? `<button type="button" class="circle sm light" data-act="limpiarQNov" aria-label="Limpiar búsqueda">${ic('x')}</button>` : ''}</div>
     <div class="chiprow"><button class="chip" data-act="fEsp" data-v="todas" aria-pressed="${filtro.esp === 'todas'}">Todas</button>${ESPECIALIDADES.filter((e) => e.id !== 'coo').map((e) => `<button class="chip" data-act="fEsp" data-v="${e.id}" aria-pressed="${filtro.esp === e.id}"><span class="sw" style="background:${e.c}"></span>${e.corto}</button>`).join('')}</div>
     <div class="seg">${[['abiertas', 'Abiertas'], ['cerradas', 'Cerradas'], ['todas', 'Todas']].map(([k, l]) => `<button data-act="fEst" data-v="${k}" aria-pressed="${filtro.est === k}">${l}</button>`).join('')}</div></div>
     <div class="list">${nov.map(rowNov).join('') || '<p class="muted" style="padding:16px 0">No hay novedades con este filtro.</p>'}</div></section>`;

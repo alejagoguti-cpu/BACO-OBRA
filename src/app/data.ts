@@ -105,11 +105,11 @@ export const PROVEEDORES_SEED: Proveedor[] = [
 export interface Novedad { id: string; ts: number; loc: string; esp: string; tipo: string; prio: 'Alta' | 'Media' | 'Baja'; txt: string; quien: string; estado: 'Abierta' | 'En revisión' | 'Cerrada'; foto?: string; pos?: [number, number, number]; ej?: boolean }
 const d = (s: string) => new Date(s).getTime();
 export const NOVEDADES_SEED: Novedad[] = [
-  { id: 'N-001', ts: d('2026-11-16T09:20:00-05:00'), loc: 'HAB-216', esp: 'hid', tipo: 'Interferencia', prio: 'Alta', txt: 'Bajante sanitaria coincide con viga en el baño', quien: 'Diseño hidrosanitario', estado: 'Abierta', ej: true },
-  { id: 'N-002', ts: d('2026-11-17T11:05:00-05:00'), loc: 'COR', esp: 'ele', tipo: 'Interferencia', prio: 'Media', txt: 'Bandeja eléctrica sin altura libre bajo cielo raso', quien: 'Diseño eléctrico', estado: 'En revisión', ej: true },
-  { id: 'N-003', ts: d('2026-11-17T15:40:00-05:00'), loc: 'HAB-222', esp: 'arq', tipo: 'Avance', prio: 'Baja', txt: 'Muros en drywall de la junior suite terminados', quien: 'Contratista de obra civil', estado: 'Cerrada', ej: true },
-  { id: 'N-004', ts: d('2026-11-18T08:30:00-05:00'), loc: 'HAB-214', esp: 'rci', tipo: 'Calidad', prio: 'Media', txt: 'Verificar distancia del rociador al muro de la suite', quien: 'Red contra incendios', estado: 'Abierta', ej: true },
-  { id: 'N-005', ts: d('2026-11-19T10:10:00-05:00'), loc: 'HAB-219', esp: 'est', tipo: 'RFI', prio: 'Alta', txt: '¿Se puede perforar la losa para el paso del desagüe?', quien: 'BACO Studio', estado: 'Abierta', ej: true },
+  { id: 'N-001', ts: d('2026-11-16T09:20:00-05:00'), loc: 'HAB-216', esp: 'hid', tipo: 'Interferencia', prio: 'Alta', txt: 'Bajante sanitaria coincide con viga en el baño', quien: 'Diseño hidrosanitario', estado: 'Abierta', pos: [-5.4, 4.3, 3.2], ej: true },
+  { id: 'N-002', ts: d('2026-11-17T11:05:00-05:00'), loc: 'COR', esp: 'ele', tipo: 'Interferencia', prio: 'Media', txt: 'Bandeja eléctrica sin altura libre bajo cielo raso', quien: 'Diseño eléctrico', estado: 'En revisión', pos: [0.8, 5.4, 0.2], ej: true },
+  { id: 'N-003', ts: d('2026-11-17T15:40:00-05:00'), loc: 'HAB-222', esp: 'arq', tipo: 'Avance', prio: 'Baja', txt: 'Muros en drywall de la junior suite terminados', quien: 'Contratista de obra civil', estado: 'Cerrada', pos: [7.6, 4.1, -4.5], ej: true },
+  { id: 'N-004', ts: d('2026-11-18T08:30:00-05:00'), loc: 'HAB-214', esp: 'rci', tipo: 'Calidad', prio: 'Media', txt: 'Verificar distancia del rociador al muro de la suite', quien: 'Red contra incendios', estado: 'Abierta', pos: [-11.2, 5.5, 4.8], ej: true },
+  { id: 'N-005', ts: d('2026-11-19T10:10:00-05:00'), loc: 'HAB-219', esp: 'est', tipo: 'RFI', prio: 'Alta', txt: '¿Se puede perforar la losa para el paso del desagüe?', quien: 'BACO Studio', estado: 'Abierta', pos: [2.4, 3.3, 5.1], ej: true },
 ];
 export const TIPOS = ['Avance', 'Interferencia', 'RFI', 'Calidad', 'Seguridad', 'Material'];
 

@@ -25,11 +25,19 @@ export interface Bim {
   cerrar(): void;
   setPins(n: Novedad[]): void;
   readonly grupos: Set<string>;
-  onReportar: ((pos: [number, number, number]) => void) | null;
+  readonly ocultos: Set<string>;
+  readonly hoverGrupo: string | null;
+  onReportar: ((pos: [number, number, number], grupo: string) => void) | null;
   onPin: ((id: string) => void) | null;
+  onHover: ((grupo: string | null) => void) | null;
   reportando: boolean;
   setCorte(on: boolean): void;
+  setCorteAltura(h: number): void;
   setFantasma(on: boolean): void;
+  toggleGrupo(g: string): void;
+  resetGrupos(): void;
+  resetCamara(): void;
+  enfocar(pos: [number, number, number]): void;
 }
 
 export function crearBim(host: HTMLElement): Bim {
@@ -69,11 +77,22 @@ export function crearBim(host: HTMLElement): Bim {
   const mallas = new Map<string, THREE.Mesh[]>();
   const pickables: THREE.Mesh[] = [];
   const grupos = new Set<string>();
+  const ocultos = new Set<string>();
   const centro = new THREE.Vector3(0, 4.5, 0);
   let listo: Promise<void> | null = null;
   let esp = 'coo';
   let fantasma = true;
   let anim = 0;
+  let hoverGrupo: string | null = null;
+
+  const hoverRing = new THREE.Mesh(
+    new THREE.RingGeometry(0.18, 0.34, 32),
+    new THREE.MeshBasicMaterial({ color: '#E8604F', side: THREE.DoubleSide, transparent: true, opacity: 0.92, depthTest: false })
+  );
+  hoverRing.rotation.x = -Math.PI / 2;
+  hoverRing.visible = false;
+  hoverRing.renderOrder = 15;
+  scene.add(hoverRing);
 
   function mat(g: string): THREE.MeshStandardMaterial {
     const d = GRUPOS[g] ?? { n: g, c: '#999' };
@@ -118,15 +137,17 @@ export function crearBim(host: HTMLElement): Bim {
     const e = ESPECIALIDADES.find((x) => x.id === esp)!;
     const todos = e.grupos.includes('*');
     for (const [g, ms] of mallas) {
-      const activo = todos || e.grupos.includes(g);
+      const activo = (todos || e.grupos.includes(g)) && !ocultos.has(g);
+      const oculto = ocultos.has(g);
       for (const m of ms) {
         const mt = m.material as THREE.MeshStandardMaterial;
         const d = GRUPOS[g];
-        m.visible = activo || fantasma;
+        m.visible = !oculto && (activo || fantasma);
         mt.color.set(activo ? d?.c ?? '#999' : '#cdd5dc');
         mt.opacity = activo ? m.userData.base : g === 'muros' || g === 'losas' ? 0.13 : 0.06;
         mt.depthWrite = activo && m.userData.base === 1;
-        mt.emissiveIntensity = activo && d?.emis ? 0.6 : 0;
+        mt.emissive.set(activo && d?.emis ? d.c : hoverGrupo === g && activo ? '#1FA58C' : 0x000000);
+        mt.emissiveIntensity = activo && d?.emis ? 0.6 : hoverGrupo === g && activo ? 0.25 : 0;
         mt.clippingPlanes = [planoActivo];
         m.castShadow = activo && m.userData.base === 1;
         m.renderOrder = activo ? 0 : 1;
@@ -164,6 +185,39 @@ export function crearBim(host: HTMLElement): Bim {
   const ptr = new THREE.Vector2();
   let down: { x: number; y: number } | null = null;
   canvas.addEventListener('pointerdown', (e) => { down = { x: e.clientX, y: e.clientY }; });
+  canvas.addEventListener('pointermove', (e) => {
+    if (down) return;
+    const r = canvas.getBoundingClientRect();
+    ptr.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+    ray.setFromCamera(ptr, camera);
+    const pin = ray.intersectObjects(pinGroup.children)[0];
+    if (pin) {
+      canvas.style.cursor = 'pointer';
+      hoverRing.visible = false;
+      if (hoverGrupo !== null) { hoverGrupo = null; aplicar(); api.onHover?.(null); }
+      return;
+    }
+    const hit = ray.intersectObjects(pickables.filter((m) => m.visible && m.userData.activo)).find((h) => h.point.y < planoActivo.constant + 0.01);
+    const g = hit ? (hit.object.userData.g as string) : null;
+    if (api.reportando && hit) {
+      canvas.style.cursor = 'crosshair';
+      hoverRing.visible = true;
+      hoverRing.position.copy(hit.point);
+      if (hit.face) {
+        const n = hit.face.normal.clone().transformDirection(hit.object.matrixWorld);
+        hoverRing.position.addScaledVector(n, 0.03);
+        hoverRing.lookAt(hoverRing.position.clone().add(n));
+      }
+    } else {
+      canvas.style.cursor = api.reportando ? 'crosshair' : g ? 'grab' : '';
+      hoverRing.visible = false;
+    }
+    if (g !== hoverGrupo) {
+      hoverGrupo = g;
+      aplicar();
+      api.onHover?.(g);
+    }
+  });
   canvas.addEventListener('pointerup', (e) => {
     if (!down || Math.hypot(e.clientX - down.x, e.clientY - down.y) > 6) { down = null; return; }
     down = null;
@@ -174,7 +228,10 @@ export function crearBim(host: HTMLElement): Bim {
     if (pin) { api.onPin?.(pin.object.userData.id); return; }
     if (!api.reportando) return;
     const hit = ray.intersectObjects(pickables.filter((m) => m.visible && m.userData.activo)).find((h) => h.point.y < planoActivo.constant + 0.01);
-    if (hit) api.onReportar?.([+hit.point.x.toFixed(2), +hit.point.y.toFixed(2), +hit.point.z.toFixed(2)]);
+    if (hit) {
+      hoverRing.visible = false;
+      api.onReportar?.([+hit.point.x.toFixed(2), +hit.point.y.toFixed(2), +hit.point.z.toFixed(2)], hit.object.userData.g as string);
+    }
   });
 
   function resize(): void {
@@ -183,20 +240,27 @@ export function crearBim(host: HTMLElement): Bim {
   }
   addEventListener('resize', resize);
 
-  let raf = 0; let abierto = false; let t0 = 0;
+  let raf = 0; let abierto = false; let t0 = 0; let camOnly = false;
   const desde = new THREE.Vector3(); const hacia = new THREE.Vector3();
+  const targetDesde = new THREE.Vector3(); const targetHacia = new THREE.Vector3();
   function loop(now: number): void {
     if (!abierto) return;
     raf = requestAnimationFrame(loop);
     if (anim) {
-      const k = Math.min(1, (now - t0) / 1600), e = 1 - Math.pow(1 - k, 3);
+      const dur = camOnly ? 900 : 1600;
+      const k = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - k, 3);
       camera.position.lerpVectors(desde, hacia, e);
-      for (const [g, ms] of mallas) {
-        const i = Object.keys(GRUPOS).indexOf(g);
-        const kk = Math.min(1, Math.max(0, (now - t0 - i * 45) / 700)), ee = 1 - Math.pow(1 - kk, 3);
-        for (const m of ms) m.position.y = (1 - ee) * 6;
+      if (camOnly) {
+        controls.target.lerpVectors(targetDesde, targetHacia, e);
+        if (k >= 1) { anim = 0; camOnly = false; }
+      } else {
+        for (const [g, ms] of mallas) {
+          const i = Object.keys(GRUPOS).indexOf(g);
+          const kk = Math.min(1, Math.max(0, (now - t0 - i * 45) / 700)), ee = 1 - Math.pow(1 - kk, 3);
+          for (const m of ms) m.position.y = (1 - ee) * 6;
+        }
+        if (k >= 1 && now - t0 > 1600 + 21 * 45 + 700) anim = 0;
       }
-      if (k >= 1 && now - t0 > 1600 + 21 * 45 + 700) anim = 0;
     }
     pinGroup.children.forEach((s, i) => { s.position.y += Math.sin(now * 0.004 + i) * 0.002; });
     controls.update();
@@ -205,7 +269,9 @@ export function crearBim(host: HTMLElement): Bim {
 
   const api: Bim = {
     grupos,
-    onReportar: null, onPin: null, reportando: false,
+    ocultos,
+    get hoverGrupo() { return hoverGrupo; },
+    onReportar: null, onPin: null, onHover: null, reportando: false,
     abrir(e: string) {
       esp = e;
       const primera = !abierto;
@@ -216,16 +282,33 @@ export function crearBim(host: HTMLElement): Bim {
           controls.target.copy(centro);
           hacia.set(centro.x + 38, centro.y + 46, centro.z + 52);
           desde.set(centro.x + 90, centro.y + 140, centro.z + 120);
-          camera.position.copy(desde); t0 = performance.now(); anim = 1;
+          camera.position.copy(desde); t0 = performance.now(); anim = 1; camOnly = false;
         }
       });
       cancelAnimationFrame(raf); raf = requestAnimationFrame(loop);
       return p;
     },
-    cerrar() { abierto = false; host.hidden = true; cancelAnimationFrame(raf); },
+    cerrar() { abierto = false; host.hidden = true; hoverRing.visible = false; cancelAnimationFrame(raf); },
     setPins,
     setCorte(on: boolean) { planoActivo = on ? corte : sinCorte; aplicar(); },
+    setCorteAltura(h: number) { corte.constant = h; aplicar(); },
     setFantasma(on: boolean) { fantasma = on; aplicar(); },
+    toggleGrupo(g: string) { if (ocultos.has(g)) ocultos.delete(g); else ocultos.add(g); aplicar(); },
+    resetGrupos() { ocultos.clear(); aplicar(); },
+    resetCamara() {
+      desde.copy(camera.position);
+      hacia.set(centro.x + 38, centro.y + 46, centro.z + 52);
+      targetDesde.copy(controls.target);
+      targetHacia.copy(centro);
+      t0 = performance.now(); anim = 1; camOnly = true;
+    },
+    enfocar(pos: [number, number, number]) {
+      desde.copy(camera.position);
+      targetDesde.copy(controls.target);
+      targetHacia.set(...pos);
+      hacia.set(pos[0] + 10, pos[1] + 9, pos[2] + 12);
+      t0 = performance.now(); anim = 1; camOnly = true;
+    },
   };
   return api;
 }

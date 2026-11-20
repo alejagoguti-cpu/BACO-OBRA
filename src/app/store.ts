@@ -8,20 +8,40 @@ export const SUPA = { url: '', key: '' };
 export const compartido = () => !!(SUPA.url && SUPA.key);
 
 const KEY = 'baco-obra-v4';
+export type Rol = 'estelar' | 'contratista';
 export interface Estado {
+  rol: Rol | null; espUser: string; nombreUser: string;
   modo: 'solo' | 'integrado'; obra: number; iva: boolean; mes: number;
   ent: Record<string, number>; prov: Proveedor[]; esp: string; chart: 'bar' | 'line'; img: number; semana: number;
   act: Record<number, number>; corte: string; hecho: Record<string, number>;
 }
-const def = (): Estado => ({ modo: 'solo', obra: 8, iva: false, mes: 5, ent: { A0: 1, A1: 1, A2: 1, A4: 1 }, prov: PROVEEDORES_SEED.map((p) => ({ ...p })), esp: 'coo', chart: 'bar', img: 0, semana: -1, act: {}, corte: '', hecho: {} });
+const def = (): Estado => ({ rol: null, espUser: 'arq', nombreUser: '', modo: 'solo', obra: 8, iva: false, mes: 5, ent: { A0: 1, A1: 1, A2: 1, A4: 1 }, prov: PROVEEDORES_SEED.map((p) => ({ ...p })), esp: 'coo', chart: 'bar', img: 0, semana: -1, act: {}, corte: '', hecho: {} });
 export let S: Estado = def();
 try { const r = localStorage.getItem(KEY); if (r) S = Object.assign(def(), JSON.parse(r)); } catch { /* sin almacenamiento */ }
 export const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch { /* lleno o bloqueado */ } };
-export function reset(): void { S = def(); save(); try { localStorage.removeItem(KEY + '-nov'); } catch { /* */ } novedades = NOVEDADES_SEED.map((n) => ({ ...n })); }
+export function reset(): void {
+  const { rol, espUser, nombreUser } = S;
+  S = Object.assign(def(), { rol, espUser, nombreUser });
+  save();
+  try { localStorage.removeItem(KEY + '-nov'); } catch { /* */ }
+  novedades = NOVEDADES_SEED.map((n) => ({ ...n }));
+}
 
 /* ---------------- novedades ---------------- */
 let novedades: Novedad[] = NOVEDADES_SEED.map((n) => ({ ...n }));
-try { const r = localStorage.getItem(KEY + '-nov'); if (r) novedades = JSON.parse(r); } catch { /* */ }
+try {
+  const r = localStorage.getItem(KEY + '-nov');
+  if (r) {
+    const parsed = JSON.parse(r) as Novedad[];
+    novedades = parsed.map((n) => {
+      if (n.ej && !n.pos) {
+        const seed = NOVEDADES_SEED.find((s) => s.id === n.id);
+        if (seed?.pos) return { ...n, pos: seed.pos };
+      }
+      return n;
+    });
+  }
+} catch { /* */ }
 const saveNov = () => {
   try { localStorage.setItem(KEY + '-nov', JSON.stringify(novedades)); }
   catch { // fotos muy pesadas: guarda sin las más viejas

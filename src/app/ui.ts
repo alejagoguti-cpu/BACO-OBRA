@@ -31,6 +31,12 @@ const P: Record<string, string> = {
   printer: '<path d="M7 9V4h10v5M7 17H4v-7h16v7h-3"/><rect x="7" y="14" width="10" height="6"/>', cut: '<path d="M4 12h16M7 8l-3 4 3 4M17 8l3 4-3 4"/>',
   globe: '<circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.5 2.6 3.5 5.5 3.5 8.5s-1 5.9-3.5 8.5c-2.5-2.6-3.5-5.5-3.5-8.5s1-5.9 3.5-8.5z"/>',
   moon: '<path d="M19 14.5A7.5 7.5 0 0 1 9.5 5a7.5 7.5 0 1 0 9.5 9.5z"/>', sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/>',
+  help: '<circle cx="12" cy="12" r="8.5"/><path d="M9.5 9.3a2.6 2.6 0 1 1 3.7 2.4c-.9.4-1.2 1-1.2 1.8v.3"/><circle cx="12" cy="16.8" r=".7" fill="currentColor"/>',
+  reset: '<path d="M4 12a8 8 0 1 0 2.3-5.7L4 8.5"/><path d="M4 4v4.5h4.5"/>',
+  key: '<circle cx="8" cy="15" r="4"/><path d="M11 12l8-8M16 7l2.5 2.5M18 4.5L20.5 7"/>',
+  logout: '<path d="M10 4H5.5A1.5 1.5 0 0 0 4 5.5v13A1.5 1.5 0 0 0 5.5 20H10"/><path d="M15 8l5 4-5 4M9 12h11"/>',
+  hard: '<path d="M4 15a8 8 0 0 1 16 0v2H4z"/><path d="M10 7.3V5a2 2 0 0 1 4 0v2.3M2 17h20"/>',
+  crown: '<path d="M3.5 18h17M4.5 15L3 7l5 4 4-6 4 6 5-4-1.5 8z"/>',
 };
 export const ic = (k: string, sw = 1.8, cls = 'ic') => `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[k] ?? ''}</svg>`;
 
