@@ -333,3 +333,250 @@ export function vHonorarios(): string {
   </div>
   <section class="card"><h2 style="margin-bottom:8px">Qué no incluye</h2><p class="desc" style="font-size:14px">Escaneo y modelado LOD 300, elaboración o firma de diseños, modelos LOD 400 de terceros, interventoría o dirección de obra, integración BMS/IoT/CMMS y licencias permanentes del propietario. Las etapas A, B y D son fijas: $111.000.000.</p></section>`;
 }
+
+/* ================= ASISTENTE IA + BITÁCORA WHATSAPP & 360° (ESTILO SPYBEE + PROPUESTA BOT) ================= */
+export interface WaEntry { id: string; hora: string; autor: string; rol: string; frente: string; tipo: 'voz' | 'foto' | 'texto' | 'corte'; msg: string; resp: string; img?: string; dur?: string; tag: string }
+export const WA_LOG_SEED: WaEntry[] = [
+  { id: 'W-1', hora: '07:45 a.m.', autor: 'Ing. Jorge Ramírez', rol: 'Residente Frente 1', frente: 'HAB-216', tipo: 'foto', msg: 'Terminado el replanteo hidrosanitario en baño de Hab. 216, dejamos pase listo en viga.', resp: 'Anotado en bitácora del Piso 2 (Frente 1 · Hab. 216). Vinculado a actividad 4.1 Hidrosanitaria. ✓', img: 'img/bano.webp', tag: 'Hidrosanitaria · Hab. 216' },
+  { id: 'W-2', hora: '10:14 a.m.', autor: 'Maestro Carlos Ruiz', rol: 'Obra Civil / Drywall', frente: 'HAB-222', tipo: 'voz', dur: '0:38', msg: ' Transcripción IA: "Ya cerramos estructura metálica de drywall en Junior Suite 222 y 223. Faltan 18 láminas RH para mañana."', resp: 'Entendí: avance drywall en Hab. 222–223 al 85% y alerta de suministro (18 láminas RH). ¿Lo marco como novedad de material para compras?', tag: 'Nota de voz · Hab. 222' },
+  { id: 'W-3', hora: '02:30 p.m.', autor: 'Arq. Camila Soto', rol: 'Coordinación BIM BACO', frente: 'COR', tipo: 'foto', msg: 'Recorrido 360° completado en corredor Piso 2 y hall de ascensores. Nube de puntos validada contra modelo MEP.', resp: 'Recorrido 360° #14 georreferenciado sobre el plano del Piso 2. 12 fotos 360° indexadas sin desviaciones críticas. ✓', img: 'img/suite.webp', tag: 'Captura 360° · Corredor' },
+  { id: 'W-4', hora: '06:00 p.m.', autor: 'Asistente IA BACO', rol: 'Corte Diario Automático', frente: 'PISO 2', tipo: 'corte', msg: '📈 Corte diario enviado al supervisor: Avance piso 2 +1.8% hoy · 16 operarios en 3 frentes · 24 fotos con ubicación · 1 alerta de material.', resp: 'Entregado por WhatsApp a Gerencia Estelar y Dirección de Obra · 6:00 p.m. ✓✓', tag: 'Corte 6:00 p.m.' },
+];
+
+export function responderIA(qRaw: string): { resp: string; fuente: string; accion?: [string, string, string] } {
+  const q = qRaw.toLowerCase();
+  const ob = OBRA ? totalObra() : { prog: 0.3, real: 0.26, n: 120, hechas: 31 };
+  const novs = listaNovedades();
+  const ab = novs.filter((n) => n.estado !== 'Cerrada');
+  const habMatch = q.match(/\b(21[4-9]|22[0-5])\b/);
+  if (habMatch && OBRA) {
+    const h = habMatch[1];
+    const hb = OBRA.habitaciones.find((x) => x.hab === h);
+    const a = porHab(h);
+    const nv = novs.filter((x) => x.loc === 'HAB-' + h);
+    return {
+      resp: `La **Habitación ${h} (${hb?.tipo ?? 'Suite'})** pertenece al **${hb?.frente ?? 'Frente 1'}** (${hb?.area ?? 36} m²). Tiene un **avance real del ${Math.round(a.real * 100)}%** frente a un **${Math.round(a.prog * 100)}% programado** (${a.hechas} de ${a.n} actividades terminadas). Registra **${nv.length} novedad(es)** (${nv.filter((x) => x.estado !== 'Cerrada').length} abiertas).`,
+      fuente: `Matriz Programación HE La Fontana · Bitácora WhatsApp + QR Hab. ${h}`,
+      accion: ['habDetalle', h, `Abrir ficha Hab. ${h}`],
+    };
+  }
+  if (q.includes('interferencia') || q.includes('rfi') || q.includes('novedad') || q.includes('choque') || q.includes('pendiente')) {
+    const crit = ab.filter((n) => n.prio === 'Alta');
+    const top = crit[0] ?? ab[0];
+    return {
+      resp: `Hay **${ab.length} novedades abiertas** en el Piso 2 (${crit.length} de prioridad **Alta**). La más crítica es **${top ? `${top.id} en ${ubic(top.loc)}: "${top.txt}"` : 'ninguna'}**, reportada por *${top?.quien ?? 'obra'}*.`,
+      fuente: `Registro CDE ISO 19650 · ${novs.length} reportes indexados (QR + WhatsApp + Modelo 3D)`,
+      accion: top?.pos ? ['novVer3d', top.id, `Ver ${top.id} en 3D`] : ['irRuta', 'novedades', 'Ver todas las novedades'],
+    };
+  }
+  if (q.includes('hidro') || q.includes('agua') || q.includes('sanit') || q.includes('tub') || q.includes('elec') || q.includes('conduit') || q.includes('mep') || q.includes('red')) {
+    const isEle = q.includes('elec') || q.includes('conduit');
+    const k = isEle ? 'ele' : 'hid';
+    const d = espDe(k);
+    const a = OBRA ? porEsp(k) : { prog: 0.25, real: 0.2, n: 24, hechas: 6 };
+    return {
+      resp: `El frente de **${d.n}** lleva un **${Math.round(a.real * 100)}% de avance real** vs. **${Math.round(a.prog * 100)}% programado** (${a.hechas}/${a.n} tareas). Modelo Revit MEP (\`1001_Hotel_la_fotona_redes.rvt\`) coordinado en LOD 400.`,
+      fuente: `Modelo BIM MEP Piso 2 + Matriz de programación por oficios`,
+      accion: ['abrirBim', k, `Abrir 3D ${d.corto}`],
+    };
+  }
+  if (q.includes('honorario') || q.includes('costo') || q.includes('pago') || q.includes('presupuesto') || q.includes('factura') || q.includes('valor')) {
+    const ps = pagos(), fact = ps.filter(paid).reduce((s, p) => s + p.v, 0), tot = total();
+    return {
+      resp: `En la modalidad **${S.modo === 'solo' ? 'Solo BIM' : 'BIM + Construcción'}** (${S.obra} meses de obra), el contrato total es de **${fmtM(iv(tot))}** (${S.iva ? 'con IVA' : 'sin IVA'}). Al **Mes ${S.mes}** se han ejecutado **${fmtM(iv(fact))}** (${Math.round((fact / tot) * 100)}%). El ahorro de la modalidad integrada es de **${fmtM(iv(total('solo') - total('integrado')))}**.`,
+      fuente: `Propuesta BIM BACO Studio v03 (9 nov 2026) · Plan de pagos Etapa A–D`,
+      accion: ['irRuta', 'honorarios', 'Abrir simulador de honorarios'],
+    };
+  }
+  if (q.includes('whatsapp') || q.includes('corte') || q.includes('bitacora') || q.includes('bitácora') || q.includes('foto') || q.includes('360')) {
+    return {
+      resp: `Hoy la línea de **WhatsApp de Obra** ha procesado **38 mensajes, 9 notas de voz y 24 fotos georreferenciadas**, más **1 recorrido 360°** sobre el plano del Piso 2. El corte automático de las **6:00 p.m.** está activo y al día.`,
+      fuente: `Bot WhatsApp Business API + Trazado 360° Spybee Piso 2`,
+    };
+  }
+  return {
+    resp: `El **Piso 2 de Torre Suites (12 habitaciones, 3 frentes)** registra un **avance general real del ${Math.round(ob.real * 100)}%** frente al **${Math.round(ob.prog * 100)}% programado** (${ob.hechas} de ${ob.n} actividades completadas). Hay **${ab.length} novedades abiertas** y **${entP().d} de ${entP().t} entregables BIM** verificados.`,
+    fuente: `Índice unificado BACO IA: Cronograma (${OBRA?.actividades.length ?? 120} act.) + Modelo Revit/MEP + Bitácora WhatsApp`,
+    accion: ['irRuta', 'avance', 'Ver Curva S y habitaciones'],
+  };
+}
+
+export function vAsistente(
+  chat: { q: string; resp: string; fuente: string; accion?: [string, string, string] }[],
+  waLog: WaEntry[],
+  modo360: boolean
+): string {
+  const ob = OBRA ? totalObra() : { prog: 0.3, real: 0.26, n: 120, hechas: 31 };
+  const ab = abiertas();
+  const prompts = [
+    '¿Cómo va el avance general del piso 2 vs. lo programado?',
+    '¿Qué interferencias o RFI críticos están abiertos hoy?',
+    '¿Cuál es el estado de la Habitación 216?',
+    '¿Cómo va la red Hidrosanitaria y Eléctrica en el piso 2?',
+    '¿Qué reportó el equipo hoy por WhatsApp y cámaras 360°?',
+    '¿Cuánto se ha ejecutado de honorarios al mes actual?',
+  ];
+  return `${head(
+    'Tu obra genera millones de datos. Ahora puedes preguntarle · IA + WhatsApp + 360°',
+    '<b>Asistente IA</b> & Bitácora WhatsApp',
+    `<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">
+      <div class="kchip"><span class="ic2" style="background:var(--teal);color:#fff">${ic('spark')}</span><span><b>100%</b><small>Obra indexada en vivo</small></span></div>
+      <div class="kchip"><span class="ic2" style="background:#25D366;color:#fff">${ic('wa')}</span><span><b>${waLog.length} cortes</b><small>Bitácora WhatsApp hoy</small></span></div>
+    </div>`
+  )}
+  <div class="ai-grid">
+    <!-- COLUMNA IZQUIERDA: COPILOTO IA ESTILO SPYBEE -->
+    <section class="card ai-panel">
+      <div class="chead" style="align-items:center">
+        <div style="display:flex;gap:12px;align-items:center">
+          <span class="badge" style="background:linear-gradient(135deg,var(--teal),#0E6B5A)">${ic('spark', 2.2)}</span>
+          <div><h2>Pregúntale a la obra en lenguaje natural</h2><p class="sub">Indexamos cronograma, modelos Revit/MEP, recorridos 360°, fotos, notas de voz y mensajes de WhatsApp</p></div>
+        </div>
+        <span class="pill ok">Fuentes verificables</span>
+      </div>
+
+      <div class="ai-sources">
+        <span>${ic('layers', 1.7)} Revit + MEP 3D</span>
+        <span>${ic('plan', 1.7)} ${OBRA?.actividades.length ?? 120} Actividades</span>
+        <span>${ic('wa', 1.7)} Bitácora WhatsApp</span>
+        <span>${ic('vr', 1.7)} Recorridos 360°</span>
+        <span>${ic('novedades', 1.7)} ${listaNovedades().length} Novedades QR</span>
+      </div>
+
+      <div class="chiprow" style="margin:4px 0 10px">
+        ${prompts.map((p) => `<button type="button" class="chip ai-prompt" data-act="aiPrompt" data-v="${esc(p)}">${ic('spark', 1.6)} ${esc(p)}</button>`).join('')}
+      </div>
+
+      <div class="ai-chat" id="aiChatBox">
+        ${chat.map((c) => `
+          <div class="ai-msg user"><div class="bub-u">${esc(c.q)}</div></div>
+          <div class="ai-msg bot">
+            <span class="ai-av">${ic('spark', 1.8)}</span>
+            <div class="bub-b">
+              <p>${esc(c.resp).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/\*(.+?)\*/g, '<i>$1</i>')}</p>
+              <div class="ai-meta">
+                <span class="ai-src">${ic('check', 2.2)} Fuente: ${esc(c.fuente)}</span>
+                ${c.accion ? `<button type="button" class="chip" style="background:var(--black);color:var(--onBlack);padding:5px 12px;font-size:12px" data-act="${c.accion[0]}" data-v="${esc(c.accion[1])}">${esc(c.accion[2])} ${ic('arrowR', 2)}</button>` : ''}
+              </div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+
+      <form id="fAiAsk" class="ai-input">
+        ${ic('spark', 2)}
+        <input id="qAi" placeholder="Pregunta ej.: ¿Cómo va la habitación 216 o qué interferencias hay en hidrosanitaria?" aria-label="Preguntar al asistente IA de la obra">
+        <button type="submit" class="btn teal" style="padding:10px 18px">${ic('send', 1.8)} Preguntar</button>
+      </form>
+    </section>
+
+    <!-- COLUMNA DERECHA: WHATSAPP DE OBRA (LA OBRA AL DÍA POR WHATSAPP) -->
+    <section class="card wa-card">
+      <div class="chead" style="align-items:center">
+        <div style="display:flex;gap:12px;align-items:center">
+          <span class="badge" style="background:#25D366;color:#fff">${ic('wa', 2.2)}</span>
+          <div><h2>La obra, al día por WhatsApp</h2><p class="sub">Le escriben como a una persona · Responde como un residente ordenado</p></div>
+        </div>
+        <button type="button" class="chip" data-act="waCorte" style="background:#DCF8C6;color:#075E54;font-weight:800">${ic('clock', 1.7)} Generar corte 6:00 p.m.</button>
+      </div>
+
+      <div class="wa-phone">
+        <div class="wa-top">
+          <span class="wa-av">BO</span>
+          <div style="flex:1"><b>Asistente BACO · Torre Suites P2</b><small>en línea · línea verificada WhatsApp Business</small></div>
+          <span class="pill" style="background:rgba(255,255,255,.18);color:#fff;font-size:11px">Auto-Bitácora</span>
+        </div>
+        <div class="wa-feed" id="waFeed">
+          ${waLog.map((w) => `
+            <div class="wa-pair">
+              <div class="wa-in">
+                <div class="wa-who"><b>${esc(w.autor)}</b><span>${esc(w.rol)} · ${esc(w.frente)}</span></div>
+                ${w.img ? `<img src="${w.img}" alt="Foto enviada por WhatsApp" class="wa-img">` : ''}
+                ${w.tipo === 'voz' ? `<div class="wa-voice">${ic('mic', 1.8)}<div class="wa-wave"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><span>${w.dur ?? '0:32'}</span></div>` : ''}
+                <p>${esc(w.msg)}</p>
+                <div class="wa-foot"><span class="wa-tag">${esc(w.tag)}</span><small>${w.hora} ✓✓</small></div>
+              </div>
+              <div class="wa-out">
+                <p>${esc(w.resp)}</p>
+                <small>Asistente IA · ${w.hora}</small>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+        <form id="fWaSim" class="wa-bar">
+          <select id="waFrente" class="wa-sel" aria-label="Frente o habitación">
+            ${UBICACIONES.map(([k, t]) => `<option value="${k}">${esc(k)}</option>`).join('')}
+          </select>
+          <input id="waTxt" placeholder="Simular mensaje o nota desde obra (ej. Fundimos losa pase baño)…" aria-label="Mensaje de WhatsApp">
+          <button type="submit" class="circle" style="width:38px;height:38px;background:#25D366;color:#fff" aria-label="Enviar a WhatsApp">${ic('send', 1.8)}</button>
+        </form>
+      </div>
+    </section>
+  </div>
+
+  <!-- SECCIÓN INFERIOR: TRAZADO DE RECORRIDO 360° SOBRE EL PLANO + CORTE EJECUTIVO -->
+  <div class="g2">
+    <section class="card">
+      <div class="chead" style="align-items:center;flex-wrap:wrap">
+        <div><h2>Recorrido 360° y nube de puntos sobre el plano</h2><p class="sub">Toca un punto de captura en el Piso 2 para inspeccionar foto 360° o abrir ese sector en 3D</p></div>
+        <div class="seg">
+          <button type="button" data-act="modo360" data-v="0" aria-pressed="${!modo360}">Trazado 360°</button>
+          <button type="button" data-act="modo360" data-v="1" aria-pressed="${modo360}">Nube de puntos LiDAR</button>
+        </div>
+      </div>
+      <div class="plan360 ${modo360 ? 'lidar' : ''}">
+        <img src="img/axo.webp" alt="Axonometría Piso 2 con trazado 360">
+        <svg class="trace360" viewBox="0 0 600 320" preserveAspectRatio="none">
+          <path d="M 85 215 Q 170 165 255 170 T 415 135 T 515 180" fill="none" stroke="#FF5A1F" stroke-width="3.5" stroke-dasharray="7 6"/>
+        </svg>
+        ${[
+          ['214', 16, 64, 'Suite Junior 214 · Rociador y cielo raso'],
+          ['216', 32, 51, 'Hab. 216 · Bajante sanitaria vs. viga'],
+          ['COR', 52, 53, 'Corredor central · Bandeja eléctrica'],
+          ['219', 68, 41, 'Hab. 219 · Pase de losa estructurado'],
+          ['222', 84, 56, 'Suite Junior 222 · Cierre drywall terminado'],
+        ].map(([k, x, y, d], idx) => `
+          <button type="button" class="pin360" style="left:${x}%;top:${y}%" data-act="${k === 'COR' ? 'abrirBim' : 'habDetalle'}" data-v="${k === 'COR' ? 'ele' : k}" title="${esc(d)}">
+            <span class="p360-num">${idx + 1}</span>
+            <span class="p360-tip"><b>360° · ${k}</b><small>${esc(d)}</small></span>
+          </button>
+        `).join('')}
+        <div class="plan360-bar">
+          <span>${ic('vr', 1.8)} <b>Recorrido #14</b> · 19 nov 2026 · 18 capturas 360° georreferenciadas</span>
+          <button type="button" class="chip" style="background:var(--black);color:var(--onBlack);padding:5px 12px;font-size:12px" data-act="abrirBim" data-v="coo">Abrir Gemelo 3D ${ic('arrowR', 2)}</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="chead">
+        <div><h2>El supervisor no pregunta. Le llega.</h2><p class="sub">Corte diario automático a las 6:00 p.m. por WhatsApp y corte mensual en PDF el día 30</p></div>
+        <button type="button" class="chip" data-act="imprimir">${ic('printer', 1.7)} Exportar PDF</button>
+      </div>
+      <div class="corte-grid">
+        <div class="corte-box dark">
+          <small class="eyebrow" style="color:#7DDBC6">CORTE DIARIO · 6:00 P.M.</small>
+          <h3>Torre Suites · Piso 2</h3>
+          <ul class="corte-list">
+            <li>📈 <b>Avance físico:</b> ${Math.round(ob.real * 100)}% real (${ob.hechas}/${ob.n} actividades)</li>
+            <li>👷 <b>Frentes activos:</b> 3 frentes · 12 habitaciones en flujo continuo</li>
+            <li>⚠️ <b>Novedades abiertas:</b> ${ab.length} (${ab.filter((n) => n.prio === 'Alta').length} de prioridad alta)</li>
+            <li>📷 <b>Evidencia hoy:</b> 24 fotos con frente + 1 recorrido 360°</li>
+            <li>⏳ <b>Próximo control:</b> Comité BIM semanal · Viernes 8:00 a.m.</li>
+          </ul>
+        </div>
+        <div class="corte-box">
+          <small class="eyebrow">CORTE MENSUAL · MES ${S.mes} DE ${T()}</small>
+          <div style="font-size:34px;font-weight:900;color:var(--teal);line-height:1;margin:6px 0">+${Math.round(ob.real * 100)}%</div>
+          <p class="muted" style="font-size:12.5px;margin-bottom:10px">Avance acumulado del prototipo Piso 2</p>
+          <div class="dl" style="font-size:13px;gap:6px">
+            <div><span>Días reportados por bot</span><b>22 / 22</b></div>
+            <div><span>Novedades cerradas</span><b>${listaNovedades().length - ab.length} de ${listaNovedades().length}</b></div>
+            <div><span>Entregables ISO 19650</span><b>${entP().d} de ${entP().t}</b></div>
+            <div><span>Fotos indexadas en CDE</span><b>412</b></div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>`;
+}

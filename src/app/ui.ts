@@ -37,6 +37,11 @@ const P: Record<string, string> = {
   logout: '<path d="M10 4H5.5A1.5 1.5 0 0 0 4 5.5v13A1.5 1.5 0 0 0 5.5 20H10"/><path d="M15 8l5 4-5 4M9 12h11"/>',
   hard: '<path d="M4 15a8 8 0 0 1 16 0v2H4z"/><path d="M10 7.3V5a2 2 0 0 1 4 0v2.3M2 17h20"/>',
   crown: '<path d="M3.5 18h17M4.5 15L3 7l5 4 4-6 4 6 5-4-1.5 8z"/>',
+  spark: '<path d="M12 3l2.2 5.8L20 11l-5.8 2.2L12 19l-2.2-5.8L4 11l5.8-2.2z"/><path d="M19 3l.8 2.2L22 6l-2.2.8L19 9l-.8-2.2L16 6l2.2-.8z"/>',
+  wa: '<path d="M20 11.5a8.5 8.5 0 0 1-12.6 7.4L3 20l1.2-4.2A8.5 8.5 0 1 1 20 11.5z"/><path d="M9.5 8.8c-.3 0-.8.3-.8 1.2 0 1.4 1.3 3.2 2.9 4.2 1.4.9 2.5.9 3 .7.5-.2.9-.8 1-1.2.1-.3 0-.5-.2-.6l-1.3-.6c-.2-.1-.4 0-.6.2l-.5.6c-.2.2-.4.2-.7 0-.6-.3-1.5-1-2-1.8-.2-.3-.1-.5.1-.7l.4-.5c.2-.2.2-.4.1-.6l-.6-1.4c-.2-.3-.4-.5-.8-.5z"/>',
+  mic: '<rect x="9" y="3.5" width="6" height="10" rx="3"/><path d="M5.5 10.5a6.5 6.5 0 0 0 13 0M12 17v3.5M8.5 20.5h7"/>',
+  vr: '<circle cx="12" cy="12" r="9"/><ellipse cx="12" cy="12" rx="9" ry="3.8"/><path d="M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>',
+  send: '<path d="M21 3L10 14M21 3l-7 18-4-7-7-4z"/>',
 };
 export const ic = (k: string, sw = 1.8, cls = 'ic') => `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[k] ?? ''}</svg>`;
 

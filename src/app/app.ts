@@ -5,8 +5,8 @@ import './app.css';
 import { ESPECIALIDADES, HOTELES, TIPOS, UBICACIONES, type Novedad } from './data';
 import { S, save, reset, listaNovedades, cargarNovedades, agregarNovedad, actualizarNovedad, nuevoId, comprimirFoto } from './store';
 import { countUp, esc, ic, toast } from './ui';
-import { OBRA, cargarObra, marcar, porEsp, porHab, realAct, fechaCorta } from './obra';
-import { T, espDe, ubic, vAvance, vEntregables, vHonorarios, vNovedades, vPanel, vPlan, vProveedores, vQR, rowNov } from './pages';
+import { OBRA, cargarObra, marcar, porEsp, porHab, realAct, fechaCorta, total as totalObra } from './obra';
+import { T, espDe, ubic, vAvance, vEntregables, vHonorarios, vNovedades, vPanel, vPlan, vProveedores, vQR, vAsistente, responderIA, WA_LOG_SEED, type WaEntry, rowNov } from './pages';
 import type { Bim } from './bim';
 
 interface HLFApi { entrar(): Promise<void>; vistaColombia(d?: number): void; volarA(lon: number, lat: number, alt?: number, dur?: number): void; viewer: { useDefaultRenderLoop: boolean }; readonly modo: 'pais' | 'sitio'; piso2(): void; completo(): void }
@@ -23,11 +23,11 @@ app.innerHTML = `
 const $ = (id: string) => document.getElementById(id)!;
 
 const NAV: [string, string, string][] = [
-  ['mapa', 'Hoteles en Colombia', 'globe'], ['obra', 'Edificio 3D', 'obra'], ['panel', 'Panel', 'panel'], ['plan', 'Planeación', 'plan'],
-  ['avance', 'Avance semanal', 'avance'], ['proveedores', 'Proveedores', 'proveedores'], ['novedades', 'Novedades y QR', 'novedades'],
-  ['entregables', 'Entregables', 'entregables'], ['honorarios', 'Honorarios', 'honorarios'],
+  ['obra', 'Building Plan 3D', 'obra'], ['mapa', 'Hoteles Colombia', 'globe'], ['panel', 'Dashboard', 'panel'], ['ia', 'IA & WhatsApp', 'spark'],
+  ['avance', 'Avance semanal', 'avance'], ['novedades', 'Novedades y QR', 'novedades'], ['plan', 'Planeación', 'plan'],
+  ['proveedores', 'Proveedores', 'proveedores'], ['entregables', 'Entregables', 'entregables'], ['honorarios', 'Honorarios', 'honorarios'],
 ];
-const PAGES = ['panel', 'plan', 'avance', 'proveedores', 'novedades', 'qr', 'entregables', 'honorarios'];
+const PAGES = ['panel', 'ia', 'plan', 'avance', 'proveedores', 'novedades', 'qr', 'entregables', 'honorarios'];
 let route = ''; let anim = true;
 const filtroNov = { esp: 'todas', est: 'abiertas', q: '' };
 let habFiltro = '';
@@ -35,6 +35,17 @@ let hotelSel: string | null = null;
 let mapOpen = false;
 let corteH = 6.15;
 let pendingPinFocus: [number, number, number] | null = null;
+let piso2Open = false;
+let modo360 = false;
+const waLog: WaEntry[] = WA_LOG_SEED.map((w) => ({ ...w }));
+const aiChat: { q: string; resp: string; fuente: string; accion?: [string, string, string] }[] = [
+  {
+    q: '¿Cómo va el avance general del piso 2 vs. lo programado?',
+    resp: 'El **Piso 2 de Torre Suites (12 habitaciones, 3 frentes)** registra un **avance general real del 26%** frente al **30% programado** en la matriz de obra. **Arquitectura (34%)** y **Estructura (52%)** lideran el ritmo, mientras que **Hidrosanitaria (22%)** tiene una interferencia activa en Hab. 216.',
+    fuente: 'Índice unificado BACO IA: Cronograma HE La Fontana + Modelo Revit/MEP + Bitácora WhatsApp',
+    accion: ['irRuta', 'avance', 'Ver Curva S y habitaciones'],
+  },
+];
 
 /* ---------------- tema ---------------- */
 try { const t = localStorage.getItem('baco-obra-tema'); if (t) document.documentElement.dataset.theme = t; } catch { /* */ }
@@ -160,8 +171,7 @@ let loginNombre = S.nombreUser || '';
 
 function renderLogin(): void {
   const e = espDe(loginEsp);
-  $('layer').innerHTML = `<div class="login-gate">
-    <div class="login-bg"><img src="portada-milhoja.webp" alt=""></div>
+  $('layer').innerHTML = `<div class="login-gate live-3d">
     <form class="login-box" id="fLogin" role="dialog" aria-label="Portal de Acceso BACO Obra">
       <div class="login-head">
         <div class="login-logos">
@@ -169,25 +179,25 @@ function renderLogin(): void {
           <span class="lsep"></span>
           <img src="logos/estelar.png" alt="Hoteles Estelar">
         </div>
-        <span class="pill ok" style="padding:6px 12px;font-size:12px">ISO 19650 · CDE Activo</span>
+        <span class="pill ok" style="padding:6px 12px;font-size:12px"><span class="pulse" style="width:7px;height:7px;border-radius:50%;background:var(--ok);display:inline-block"></span> Escena 3D Revit + 3ds Max en vivo</span>
       </div>
       <div>
         <p class="eyebrow">TORRE SUITES · HOTEL LA FONTANA · PISO 2 PROTOTIPO</p>
-        <h1>Portal de Gestión <b>BIM & Obra</b></h1>
-        <p class="sub">Selecciona tu perfil de ingreso para cargar tu entorno personalizado de control o ejecución técnica en campo.</p>
+        <h1>Portal de Gestión <b>BIM, IA & Obra</b></h1>
+        <p class="sub">Al fondo está volando el mapa 3D hacia el Hotel La Fontana con el modelo de Revit, contexto 3ds Max y redes MEP. Elige tu perfil para entrar al entorno interactivo.</p>
       </div>
       <div class="role-cards" role="radiogroup" aria-label="Perfil de acceso">
         <button type="button" class="rcard ${loginChoice === 'estelar' ? 'on' : ''}" data-act="loginRol" data-v="estelar" aria-pressed="${loginChoice === 'estelar'}">
           <div class="rtop"><span class="ric est">${ic('crown', 2)}</span><span class="rchk">${ic('check', 2.8)}</span></div>
           <b>Hoteles Estelar / Gerencia</b>
-          <small>Dashboard ejecutivo: inversión, facturación, curva S, hitos contractuales y supervisión de contratistas.</small>
-          <div class="rtags"><span>Panel Ejecutivo</span><span>Honorarios</span><span>Curva S</span><span>Mapa 3D</span></div>
+          <small>Building Plan 3D, inversión, facturación, curva S, asistente IA con fuentes y cortes de WhatsApp.</small>
+          <div class="rtags"><span>Building Plan 3D</span><span>Ejecutivo</span><span>Asistente IA</span><span>Honorarios</span></div>
         </button>
         <button type="button" class="rcard ${loginChoice === 'contratista' ? 'on' : ''}" data-act="loginRol" data-v="contratista" aria-pressed="${loginChoice === 'contratista'}">
           <div class="rtop"><span class="ric con">${ic('hard', 2)}</span><span class="rchk">${ic('check', 2.8)}</span></div>
           <b>Contratistas / Especialistas</b>
-          <small>Dashboard técnico de obra: modelo 3D LOD 400 por red, checklist semanal, RFI, interferencias y códigos QR.</small>
-          <div class="rtags"><span>Visor 3D BIM</span><span>Checklist Campo</span><span>RFI & QR</span><span>Planos</span></div>
+          <small>Visor 3D BIM por red (Revit + MEP), checklist semanal en campo, bitácora WhatsApp, 360° y códigos QR.</small>
+          <div class="rtags"><span>Redes MEP 3D</span><span>Checklist Campo</span><span>WhatsApp Bot</span><span>360° & QR</span></div>
         </button>
       </div>
       ${loginChoice === 'contratista' ? `
@@ -203,9 +213,10 @@ function renderLogin(): void {
         <div style="flex:1">
           <label class="label" for="lDestino">Al ingresar abrir</label>
           <select class="field" id="lDestino">
+            <option value="obra" selected>Building Plan 3D · Vuelo a La Fontana (Revit + 3ds Max)</option>
+            <option value="bim-${loginChoice === 'contratista' ? loginEsp : 'coo'}">Redes BIM 3D · Piso 2 (${loginChoice === 'contratista' ? e.corto : 'Coordinación'})</option>
             <option value="panel">Dashboard (${loginChoice === 'estelar' ? 'Ejecutivo Estelar' : 'Técnico de Obra'})</option>
-            <option value="obra">Escena 3D Hotel La Fontana</option>
-            <option value="bim-${loginChoice === 'contratista' ? loginEsp : 'coo'}">Visor BIM 3D · Piso 2</option>
+            <option value="ia">Asistente IA & Bitácora WhatsApp / 360°</option>
             <option value="mapa">Mapa de Hoteles en Colombia</option>
           </select>
         </div>
@@ -213,7 +224,7 @@ function renderLogin(): void {
       <div class="login-foot">
         <button class="btn ${loginChoice === 'estelar' ? 'pri' : 'teal'} block cta" type="submit" style="padding:16px 22px;font-size:15.5px">
           ${ic(loginChoice === 'estelar' ? 'crown' : 'hard', 2)}
-          <span>Entrar como <b>${loginChoice === 'estelar' ? 'Gerencia Estelar' : `Contratista · ${e.corto}`}</b></span>
+          <span>Entrar a la obra como <b>${loginChoice === 'estelar' ? 'Gerencia Estelar' : `Contratista · ${e.corto}`}</b></span>
           <span class="go">${ic('arrowR', 2.6)}</span>
         </button>
       </div>
@@ -225,8 +236,9 @@ function renderLogin(): void {
 function navActual(): [string, string, string][] {
   if (S.rol === 'contratista') {
     return [
+      ['obra', 'Building Plan 3D', 'obra'],
       ['panel', 'Mi Frente', 'panel'],
-      ['obra', 'Edificio 3D', 'obra'],
+      ['ia', 'IA & WhatsApp', 'spark'],
       ['avance', 'Avance semanal', 'avance'],
       ['novedades', 'Novedades y QR', 'novedades'],
       ['plan', 'Planeación', 'plan'],
@@ -283,13 +295,93 @@ function renderOv(): void {
     ${sel ? `<aside class="hcard glass"><div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start"><div><p class="muted" style="font-size:12.5px;font-weight:800">${esc(sel.ciudad)}</p><h2 style="font-size:20px;font-weight:800">${esc(sel.nombre)}</h2><p class="muted" style="font-size:13.5px">${esc(sel.dir)}</p></div><button class="circle sm light" data-act="cerrarHotel" aria-label="Cerrar">${ic('x')}</button></div>
       ${sel.obra ? `<span class="pill crit">Remodelación en curso</span><a class="btn coral block" href="#obra">${ic('obra')} Entrar al hotel</a>` : `<span class="pill neu">Sin obra activa</span><p class="muted" style="font-size:13px">Ubicación aproximada por dirección. Solo La Fontana tiene modelo 3D en esta etapa.</p><button class="btn block" data-act="colombia">${ic('globe')} Ver toda Colombia</button>`}</aside>` : ''}`;
   } else if (route === 'obra') {
-    ov.innerHTML = `<button class="tapme" data-act="elegirEsp" aria-label="Tocar la torre en remodelación"><span class="tapbub">${ic('tap', 2)} Toca aquí la torre</span><span class="taparrow">${ic('down', 2.8)}</span><span class="tapring"></span></button>
-    <div class="hint" style="display:flex;gap:10px;align-items:center;white-space:normal;max-width:calc(100vw - 28px);flex-wrap:wrap;justify-content:center"><span class="pulse"></span><span>Paso 2 · explora o toca la torre</span>
-      <button class="chip" data-act="elegirEsp" style="background:var(--coral);color:#fff">Elegir especialidad (3D BIM) ${ic('arrowR', 2.4)}</button>
-      <button class="chip" data-act="piso2" title="Separar pisos superiores en el modelo exterior">Abrir Piso 2</button>
-      <button class="chip" data-act="completo" title="Restaurar edificio completo">Edificio completo</button>
-      <a class="chip" href="#panel">Panel</a>
-      <a class="chip" href="#mapa">Colombia</a></div>`;
+    const ob = OBRA ? totalObra() : { prog: 0.30, real: 0.26, n: 120, hechas: 31 };
+    const novs = listaNovedades();
+    const ab = novs.filter((n) => n.estado !== 'Cerrada');
+    const crit = ab.filter((n) => n.prio === 'Alta');
+    const pctStr = (ob.real * 100).toFixed(1).split('.');
+    const ticks = Array.from({ length: 24 }, (_, i) => {
+      const h = 22 + Math.round(Math.pow((i + 1) / 24, 1.35) * 78);
+      const act = i / 24 <= ob.real ? 'done' : i / 24 <= ob.prog ? 'prog' : '';
+      return `<i class="${act}" style="height:${h}%"></i>`;
+    }).join('');
+    ov.innerHTML = `
+    <!-- Tarjeta izquierda estilo Formify (Construction SaaS Dashboard sobre el modelo 3D) -->
+    <aside class="fm-left glass">
+      <div class="fm-head">
+        <div><small class="muted">Avance total · Piso 2</small><div class="fm-big"><b>${pctStr[0]}</b><span>.${pctStr[1]}%</span></div></div>
+        <span class="pill warn" style="align-self:flex-start">${Math.round(ob.prog * 100)}% prog.</span>
+      </div>
+      <div class="fm-ticks" aria-label="Curva de progreso">${ticks}</div>
+      <div class="fm-alerts">
+        <a href="#novedades" class="fm-al warn"><div><span class="dot-w">●</span><b>${ab.length}</b></div><small>POR REVISAR →</small></a>
+        <a href="#novedades" class="fm-al crit"><div><span class="dot-c">▲</span><b>0${crit.length}</b></div><small>ALTO RIESGO →</small></a>
+      </div>
+      <div class="fm-trades">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><b style="font-size:13px">Redes & Especialidades (Revit + MEP)</b><small class="muted">Abrir 3D</small></div>
+        ${ESPECIALIDADES.map((e) => {
+          const a = OBRA && e.id !== 'est' && e.id !== 'rci' ? Math.round(porEsp(e.id).real * 100) : e.id === 'est' ? 52 : 18;
+          return `<button type="button" class="fm-trow" data-act="irBim" data-v="${e.id}"><span class="sw" style="background:${e.c}"></span><span style="flex:1">${e.corto}</span><b>${a}%</b>${ic('arrowR', 1.8)}</button>`;
+        }).join('')}
+      </div>
+    </aside>
+
+    <!-- Cabecera flotante estilo "Building Plan" -->
+    <div class="fm-title">
+      <h2>Building Plan · Torre Suites</h2>
+      <div class="fm-pills">
+        <span class="glass">${ic('obra', 1.7)} Hotel La Fontana · P2</span>
+        <span class="glass">${ic('layers', 1.7)} Revit + 3ds Max + MEP</span>
+        <a href="#ia" class="glass" style="text-decoration:none;color:var(--teal);font-weight:800">${ic('spark', 1.7)} Preguntar a la IA</a>
+      </div>
+    </div>
+
+    <!-- Tarjeta flotante derecha estilo Formify (Callout sobre la torre + miniatura 360) -->
+    <div class="fm-callout glass">
+      <div class="fm-360" data-act="irRuta" data-v="ia" title="Ver recorrido 360° y bitácora WhatsApp">
+        <img src="img/suite.webp" alt="Vista 360 Suite">
+        <span>${ic('vr', 1.6)} 360°</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div><b>Piso 2 · Prototipo</b><small class="muted" style="display:block">12 Suites · 3 Frentes</small></div>
+        <button class="circle sm" style="background:var(--coral);color:#fff" data-act="elegirEsp" aria-label="Abrir redes 3D">${ic('arrowR', 2)}</button>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px">
+        <span class="fm-dot"><i></i> En obra</span>
+        <strong style="font-size:24px;font-weight:800">${Math.round(ob.real * 100)}<span style="font-weight:500;color:var(--muted)">%</span></strong>
+      </div>
+    </div>
+
+    <!-- Botón central sobre la torre -->
+    <button class="tapme" data-act="elegirEsp" aria-label="Tocar la torre en remodelación"><span class="tapbub">${ic('tap', 2)} Toca la torre · Ver redes BIM</span><span class="taparrow">${ic('down', 2.8)}</span><span class="tapring"></span></button>
+
+    <!-- Dock inferior estilo Formify: Selector de Nivel + Barra oscura de progreso por frentes -->
+    <div class="fm-bottom">
+      <div class="fm-level glass">
+        <div class="fm-lvl-step">
+          <button type="button" data-act="piso2" title="Abrir planta Piso 2" aria-pressed="${piso2Open}">▲</button>
+          <b>02</b>
+          <button type="button" data-act="completo" title="Ver edificio completo" aria-pressed="${!piso2Open}">▼</button>
+        </div>
+        <div class="fm-lvl-info">
+          <b>${piso2Open ? 'Nivel 2 (Planta abierta)' : 'Torre completa'}</b>
+          <small class="muted">Toca para separar pisos en Revit</small>
+        </div>
+        <button type="button" class="chip" style="background:${piso2Open ? 'var(--black)' : 'var(--coral)'};color:#fff" data-act="${piso2Open ? 'completo' : 'piso2'}">${piso2Open ? 'Cerrar pisos' : 'Cortar Piso 2'}</button>
+      </div>
+
+      <div class="fm-darkbar">
+        <div class="fm-db-top">
+          <span><b>Torre Suites · 432 m²</b> <small style="opacity:.65">· 12 habitaciones</small></span>
+          <button type="button" class="chip" style="background:rgba(255,255,255,.14);color:#fff;padding:4px 10px;font-size:12px" data-act="elegirEsp">Inspeccionar MEP 3D →</button>
+        </div>
+        <div class="fm-db-bars">
+          <span style="flex:1.2;background:#E8604F">Arquitectura 34%</span>
+          <span style="flex:1;background:#1FA58C">Hidro 22%</span>
+          <span style="flex:0.9;background:#F2C94C;color:#141A21">Eléctrica 18%</span>
+        </div>
+      </div>
+    </div>`;
   } else ov.innerHTML = '';
   if (loading) ov.appendChild(loading);
 }
@@ -379,7 +471,7 @@ function renderPage(): void {
   const page = $('page');
   const base = route.split('-')[0];
   if (!PAGES.includes(base)) { page.innerHTML = ''; page.className = ''; return; }
-  const html = base === 'panel' ? vPanel() : base === 'plan' ? vPlan() : base === 'avance' ? vAvance(habFiltro) : base === 'proveedores' ? vProveedores()
+  const html = base === 'panel' ? vPanel() : base === 'ia' ? vAsistente(aiChat, waLog, modo360) : base === 'plan' ? vPlan() : base === 'avance' ? vAvance(habFiltro) : base === 'proveedores' ? vProveedores()
     : base === 'novedades' ? vNovedades(filtroNov) : base === 'qr' ? vQR() : base === 'entregables' ? vEntregables() : vHonorarios();
   const y = page.scrollTop;
   const focusId = document.activeElement?.id;
@@ -417,8 +509,13 @@ async function go(): Promise<void> {
   if (!S.rol) {
     $('rail').hidden = true; $('topbar').hidden = true; $('page').innerHTML = ''; $('page').className = ''; $('ov').innerHTML = '';
     bim?.cerrar(); $('bim').hidden = true;
-    pausarMapa(true);
     renderLogin();
+    // Carga el globo 3D y lanza la animación de vuelo hacia La Fontana (Revit + 3ds Max) en tiempo real detrás del login
+    void cargarMapa().then((hlf) => {
+      pausarMapa(false);
+      pines?.show(false);
+      void hlf.entrar();
+    });
     return;
   }
   $('rail').hidden = false; $('topbar').hidden = false;
@@ -456,8 +553,36 @@ app.addEventListener('click', async (ev) => {
     case 'colombia': hotelSel = null; renderOv(); (await cargarMapa()).vistaColombia(); return;
     case 'toggleLista': mapOpen = !mapOpen; renderOv(); return;
     case 'elegirEsp': hojaEspecialidad(); return;
-    case 'piso2': W.HLF?.piso2(); return;
-    case 'completo': W.HLF?.completo(); return;
+    case 'piso2': piso2Open = !piso2Open; W.HLF?.piso2(); renderOv(); return;
+    case 'completo': piso2Open = false; W.HLF?.completo(); renderOv(); return;
+    case 'irRuta': location.hash = v; return;
+    case 'aiPrompt': {
+      const r = responderIA(v);
+      aiChat.push({ q: v, ...r });
+      renderPage();
+      const box = document.getElementById('aiChatBox');
+      if (box) box.scrollTop = box.scrollHeight;
+      return;
+    }
+    case 'modo360': modo360 = v === '1'; renderPage(); return;
+    case 'waCorte': {
+      const ob = OBRA ? totalObra() : { prog: 0.3, real: 0.26, n: 120, hechas: 31 };
+      const ab = listaNovedades().filter((n) => n.estado !== 'Cerrada');
+      waLog.unshift({
+        id: 'W-' + (waLog.length + 1),
+        hora: new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }),
+        autor: 'Asistente IA BACO',
+        rol: 'Corte Diario Automático',
+        frente: 'PISO 2',
+        tipo: 'corte',
+        msg: `📈 Corte diario generado: Avance piso 2 ${Math.round(ob.real * 100)}% (${ob.hechas}/${ob.n} actividades) · ${ab.length} novedades abiertas · fotos y recorrido 360° sincronizados en CDE.`,
+        resp: 'Enviado por WhatsApp a Gerencia Estelar y Supervisor BIM ✓✓',
+        tag: 'Corte 6:00 p.m.',
+      });
+      toast('Corte diario de las 6:00 p.m. enviado por WhatsApp');
+      renderPage();
+      return;
+    }
     case 'irBim': cerrarHoja(); location.hash = 'bim-' + v; return;
     case 'abrirBim': cerrarHoja(); habAbierta = ''; location.hash = 'bim-' + v; return;
     case 'bimEsp': bimEsp = v; history.replaceState(null, '', '#bim-' + v); route = 'bim-' + v; void bim?.abrir(v).then(renderBimUi); renderBimUi(); return;
@@ -618,6 +743,69 @@ app.addEventListener('submit', async (ev) => {
     const nv = listaNovedades().find((n) => n.id.toLowerCase().includes(q) || n.txt.toLowerCase().includes(q));
     if (nv) { location.hash = 'novedades'; abrirDetalle(nv.id); return; }
     toast('No encontré ese hotel, habitación o novedad'); return;
+  }
+  if (f.id === 'fAiAsk') {
+    const inp = document.getElementById('qAi') as HTMLInputElement | null;
+    const q = inp?.value.trim() ?? '';
+    if (!q) return;
+    const r = responderIA(q);
+    aiChat.push({ q, ...r });
+    renderPage();
+    const box = document.getElementById('aiChatBox');
+    if (box) box.scrollTop = box.scrollHeight;
+    return;
+  }
+  if (f.id === 'fWaSim') {
+    const inp = document.getElementById('waTxt') as HTMLInputElement | null;
+    const sel = document.getElementById('waFrente') as HTMLSelectElement | null;
+    const msg = inp?.value.trim() ?? '';
+    const frente = sel?.value ?? 'HAB-216';
+    if (!msg) return;
+    const hora = new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
+    const autor = S.nombreUser || (S.rol === 'contratista' ? `Residente · ${espDe(S.espUser).corto}` : 'Supervisor en Obra');
+    const esProblema = /falta|choque|choca|error|interferencia|pendiente|daño/i.test(msg);
+    if (esProblema) {
+      const n: Novedad = {
+        id: nuevoId(),
+        ts: Date.now(),
+        loc: frente,
+        esp: S.espUser && S.espUser !== 'coo' ? S.espUser : 'arq',
+        tipo: 'Interferencia',
+        prio: 'Alta',
+        txt: `[WhatsApp] ${msg}`,
+        quien: autor,
+        estado: 'Abierta',
+      };
+      await agregarNovedad(n);
+      waLog.unshift({
+        id: 'W-' + (waLog.length + 1),
+        hora,
+        autor,
+        rol: 'Reporte WhatsApp',
+        frente,
+        tipo: 'texto',
+        msg,
+        resp: `Detecté una incidencia en ${ubic(frente)}. He creado automáticamente la novedad ${n.id} para el supervisor y actualizado la bitácora. ✓`,
+        tag: `Auto-Novedad ${n.id}`,
+      });
+      toast(`WhatsApp → Novedad ${n.id} creada en bitácora`);
+      renderChrome();
+    } else {
+      waLog.unshift({
+        id: 'W-' + (waLog.length + 1),
+        hora,
+        autor,
+        rol: 'Reporte WhatsApp',
+        frente,
+        tipo: 'texto',
+        msg,
+        resp: `Anotado en la bitácora del día para ${ubic(frente)}. Queda indexado para el corte de las 6:00 p.m. y consultas del Asistente IA. ✓`,
+        tag: `Bitácora · ${frente}`,
+      });
+      toast('Entrada registrada en la bitácora de WhatsApp');
+    }
+    renderPage();
+    return;
   }
   if (f.id === 'fNov' && form) {
     leerForm();
