@@ -23,7 +23,7 @@ app.innerHTML = `
 const $ = (id: string) => document.getElementById(id)!;
 
 const NAV: [string, string, string][] = [
-  ['mapa', 'Hoteles en Colombia', 'globe'], ['obra', 'La Fontana 3D', 'obra'], ['panel', 'Panel', 'panel'], ['plan', 'Planeación', 'plan'],
+  ['mapa', 'Hoteles en Colombia', 'globe'], ['obra', 'Edificio 3D', 'obra'], ['panel', 'Panel', 'panel'], ['plan', 'Planeación', 'plan'],
   ['avance', 'Avance semanal', 'avance'], ['proveedores', 'Proveedores', 'proveedores'], ['novedades', 'Novedades y QR', 'novedades'],
   ['entregables', 'Entregables', 'entregables'], ['honorarios', 'Honorarios', 'honorarios'],
 ];
@@ -66,6 +66,17 @@ function seleccionarHotel(id: string): void {
 let bim: Bim | null = null;
 let bimEsp = 'coo';
 let corte = true, fantasma = true;
+let guiaVista = false; try { guiaVista = localStorage.getItem('baco-obra-guia') === '1'; } catch { /* */ }
+
+/* ---------------- guía de pasos con flechas ---------------- */
+const PASOS: [string, string][] = [['Elige el hotel', 'mapa'], ['Toca la torre', 'obra'], ['Elige especialidad', ''], ['Reporta en obra', '']];
+function pasos(n: number, extra = ''): string {
+  return `<nav class="pasos glass ${extra}" aria-label="Pasos">${PASOS.map(([t, h], k) => {
+    const cls = `paso ${k < n ? 'hecho' : k === n ? 'actual' : ''}`;
+    const inner = `<span class="pnum">${k < n ? ic('check', 3) : k + 1}</span><span class="ptx">${t}</span>`;
+    return (k ? `<span class="pchev">${ic('chev', 2.4)}</span>` : '') + (h ? `<a href="#${h}" class="${cls}">${inner}</a>` : `<span class="${cls}">${inner}</span>`);
+  }).join('')}</nav>`;
+}
 async function abrirBim(esp: string): Promise<void> {
   bimEsp = esp;
   if (!bim) {
@@ -88,6 +99,7 @@ function renderBimUi(): void {
     host.insertAdjacentHTML('beforeend', `
     <div class="bimui bimbar">
       <div class="glass bimtitle" style="padding:10px 18px 10px 10px"><button class="circle" data-act="bimVolver" aria-label="Volver">${ic('back')}</button><div><h2>Piso 2 · ${e.corto}</h2><small>Torre Suites · ${e.desc}</small></div></div>
+      ${pasos(bim?.reportando ? 3 : 2, 'bimpasos')}
       <div class="glass espbar">${ESPECIALIDADES.map((x) => `<button data-act="bimEsp" data-v="${x.id}" aria-pressed="${x.id === bimEsp}"><i style="background:${x.c}"></i>${x.corto}</button>`).join('')}</div>
     </div>
     <div class="bimui glass legend"><b style="margin:0 0 2px;color:var(--ink);font-size:13px">Qué estás viendo</b>${grupos.filter((g) => GRUPOS[g]).map((g) => `<div><i style="background:${GRUPOS[g].c}"></i>${GRUPOS[g].n}</div>`).join('')}</div>
@@ -96,7 +108,12 @@ function renderBimUi(): void {
       <button class="glass tg" data-act="bimFantasma" aria-pressed="${fantasma}"><span class="sw2"></span>Otras especialidades</button>
       <button class="report" data-act="bimReportar" aria-pressed="${!!bim?.reportando}">${ic(bim?.reportando ? 'x' : 'pin', 2)} ${bim?.reportando ? 'Cancelar' : 'Reportar aquí'}</button>
     </div>
-    ${bim?.reportando ? '<div class="bimui bimtip">Toca el punto del modelo donde está la novedad</div>' : ''}`);
+    ${!guiaVista ? `<div class="bimui coach">
+      <div class="cm cm1"><span class="cmar up">${ic('down', 2.6)}</span><b>1 · Cambia de especialidad</b><small>Arriba eliges qué red quieres ver</small></div>
+      <div class="cm cm2"><span class="cmic">${ic('tap', 2)}</span><b>2 · Gira y acerca</b><small>Arrastra para girar · rueda o pellizco para acercar</small></div>
+      <div class="cm cm3"><b>3 · Reporta una novedad</b><small>Toca el botón rojo y luego el punto exacto del modelo</small><span class="cmar">${ic('down', 2.6)}</span></div>
+      <button class="btn pri" data-act="guiaOk">Entendido ${ic('check', 2.6)}</button></div>` : ''}
+    ${bim?.reportando ? `<div class="bimui bimtip">${ic('tap', 2)} Toca el punto del modelo donde está la novedad</div>` : ''}`);
   });
 }
 
@@ -104,10 +121,10 @@ function renderBimUi(): void {
 function renderChrome(): void {
   const base = route.split('-')[0];
   const ab = listaNovedades().filter((n) => n.estado !== 'Cerrada').length;
-  $('rail').innerHTML = `<span class="logo" title="BACO Studio">BS</span>` + NAV.map(([k, l, i]) => `<a href="#${k}" ${base === k || (k === 'mapa' && base === '') || (k === 'novedades' && base === 'qr') ? 'aria-current="page"' : ''} aria-label="${l}">${ic(i)}<span class="lbl">${l}</span>${k === 'novedades' && ab ? `<span class="dot">${ab}</span>` : ''}</a>`).join('');
+  $('rail').innerHTML = `<span class="logo" title="BACO Studio">BS</span>` + NAV.map(([k, l, i]) => `<a href="#${k}" ${base === k || (k === 'mapa' && base === '') || (k === 'novedades' && base === 'qr') ? 'aria-current="page"' : ''} aria-label="${l}">${ic(i)}<span class="lbl">${l}</span><span class="rtx">${l.split(' ')[0]}</span>${k === 'novedades' && ab ? `<span class="dot">${ab}</span>` : ''}</a>`).join('');
   $('topbar').innerHTML = `
     <form class="search" id="fBuscar" role="search">${ic('search')}<input id="q" list="sugerencias" placeholder="Buscar hotel o habitación…" aria-label="Buscar hotel o habitación"><datalist id="sugerencias">${HOTELES.map((h) => `<option value="${esc(h.nombre)}">`).join('')}${UBICACIONES.map(([, t]) => `<option value="${esc(t)}">`).join('')}</datalist><button class="circle" type="submit" aria-label="Buscar">${ic('filter')}</button></form>
-    <div class="sp"></div>
+    ${base === 'mapa' || base === '' ? pasos(0) : base === 'obra' ? pasos(1) : '<div class="sp"></div>'}
     <button class="circle light" data-act="tema" aria-label="Cambiar tema">${ic(oscuro() ? 'sun' : 'moon')}</button>
     <a class="circle light" href="#novedades" aria-label="${ab} novedades abiertas" style="position:relative">${ic('bell')}${ab ? '<i style="position:absolute;top:9px;right:10px;width:8px;height:8px;border-radius:50%;background:var(--coral);border:2px solid var(--card)"></i>' : ''}</a>
     <div class="user"><span class="avatar" style="background:linear-gradient(135deg,#E8604F,#F2A07A)">GP</span><span class="t"><b>Gerencia del proyecto</b><small>Torre Suites · Piso 2</small></span></div>`;
@@ -126,15 +143,16 @@ function renderOv(): void {
         <div class="kchips"><div><b>${HOTELES.length}</b><small>hoteles</small></div><div><b>${ciudades.length}</b><small>ciudades</small></div><div><b style="color:var(--coral)">1</b><small>en remodelación</small></div></div></div>
       <div class="glass feature"><div class="ph"><img src="img/suite.webp" alt="Render de una suite remodelada"><span class="tag"><i>${ic('build', 2)}</i>Remodelación Torre Suites</span></div>
         <div class="body"><div><b style="font-size:17px">Estelar La Fontana · Bogotá</b><p class="muted" style="font-size:13.5px">Av. Calle 127 No. 15A-10 · piso 2 prototipo</p></div>
-        <a class="btn coral block" href="#obra">${ic('obra')} Entrar a La Fontana</a>
+        <a class="btn coral block cta" href="#obra">${ic('obra')} Entrar a La Fontana <span class="go">${ic('arrowR', 2.6)}</span></a>
         <button class="chip" data-act="toggleLista" style="align-self:center">${mapOpen ? 'Ocultar' : 'Ver'} todos los hoteles</button></div></div>
       <div class="glass hlist">${ciudades.map((c) => `<span class="city">${c}</span>` + HOTELES.filter((h) => h.ciudad === c).map((h) => `<button class="hrow ${h.obra ? 'obra' : ''}" data-act="hotel" data-v="${h.id}" aria-pressed="${hotelSel === h.id}"><span class="pin">${ic(h.obra ? 'build' : 'pin', 2)}</span><span><b>${esc(h.nombre)}</b><small>${esc(h.dir)}</small></span></button>`).join('')).join('')}</div>
     </aside>
     ${sel ? `<aside class="hcard glass"><div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start"><div><p class="muted" style="font-size:12.5px;font-weight:800">${esc(sel.ciudad)}</p><h2 style="font-size:20px;font-weight:800">${esc(sel.nombre)}</h2><p class="muted" style="font-size:13.5px">${esc(sel.dir)}</p></div><button class="circle sm light" data-act="cerrarHotel" aria-label="Cerrar">${ic('x')}</button></div>
       ${sel.obra ? `<span class="pill crit">Remodelación en curso</span><a class="btn coral block" href="#obra">${ic('obra')} Entrar al hotel</a>` : `<span class="pill neu">Sin obra activa</span><p class="muted" style="font-size:13px">Ubicación aproximada por dirección. Solo La Fontana tiene modelo 3D en esta etapa.</p><button class="btn block" data-act="colombia">${ic('globe')} Ver toda Colombia</button>`}</aside>` : ''}`;
   } else if (route === 'obra') {
-    ov.innerHTML = `<div class="hint" style="display:flex;gap:12px;align-items:center;white-space:normal;max-width:calc(100vw - 28px)"><span class="pulse"></span><span>Toca la torre que se está remodelando</span>
-      <button class="chip" data-act="elegirEsp" style="background:var(--coral);color:#fff">Elegir especialidad</button>
+    ov.innerHTML = `<button class="tapme" data-act="elegirEsp" aria-label="Tocar la torre en remodelación"><span class="tapbub">${ic('tap', 2)} Toca aquí la torre</span><span class="taparrow">${ic('down', 2.8)}</span><span class="tapring"></span></button>
+    <div class="hint" style="display:flex;gap:12px;align-items:center;white-space:normal;max-width:calc(100vw - 28px)"><span class="pulse"></span><span>Paso 2 · toca la torre</span>
+      <button class="chip" data-act="elegirEsp" style="background:var(--coral);color:#fff">Elegir especialidad ${ic('arrowR', 2.4)}</button>
       <button class="chip" data-act="piso2">Piso 2</button><a class="chip" href="#mapa">Colombia</a></div>`;
   } else ov.innerHTML = '';
   if (loading) ov.appendChild(loading);
@@ -145,7 +163,7 @@ function cerrarHoja(): void { $('layer').innerHTML = ''; }
 function hojaEspecialidad(): void {
   $('layer').innerHTML = `<div class="sheetbg" data-act="cerrarHojaFondo"><div class="sheet" role="dialog" aria-label="Elegir especialidad">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px"><div><h2>¿Qué especialidad vas a trabajar?</h2><p class="sub">Se abre el modelo 3D del piso 2 con esa especialidad resaltada</p></div><button class="circle light" data-act="cerrarHoja" aria-label="Cerrar">${ic('x')}</button></div>
-    <div class="esps">${ESPECIALIDADES.map((e) => `<button class="esp" data-act="irBim" data-v="${e.id}"><span class="eic" style="background:${e.c};${e.id === 'coo' ? 'color:var(--onBlack);background:var(--black)' : ''}">${ic(e.ic, 2)}</span><b>${e.corto}</b><small>${e.desc}</small><span class="pct">${OBRA && e.id !== 'est' && e.id !== 'rci' ? Math.round(porEsp(e.id).real * 100) + '%' : ''}</span></button>`).join('')}</div></div></div>`;
+    <div class="esps">${ESPECIALIDADES.map((e) => `<button class="esp" data-act="irBim" data-v="${e.id}"><span class="eic" style="background:${e.c};${e.id === 'coo' ? 'color:var(--onBlack);background:var(--black)' : ''}">${ic(e.ic, 2)}</span><b>${e.corto}</b><small>${e.desc}</small><span class="eabre">Abrir 3D ${ic('arrowR', 2.4)}</span><span class="pct">${OBRA && e.id !== 'est' && e.id !== 'rci' ? Math.round(porEsp(e.id).real * 100) + '%' : ''}</span></button>`).join('')}</div></div></div>`;
 }
 
 interface FormState { loc: string; esp: string; tipo: string; prio: 'Alta' | 'Media' | 'Baja'; txt: string; quien: string; foto?: string; pos?: [number, number, number] }
@@ -262,6 +280,7 @@ app.addEventListener('click', async (ev) => {
     case 'bimVolver': location.hash = W.HLF ? 'obra' : 'panel'; return;
     case 'bimCorte': corte = !corte; bim?.setCorte(corte); renderBimUi(); return;
     case 'bimFantasma': fantasma = !fantasma; bim?.setFantasma(fantasma); renderBimUi(); return;
+    case 'guiaOk': guiaVista = true; try { localStorage.setItem('baco-obra-guia', '1'); } catch { /* */ } renderBimUi(); return;
     case 'bimReportar': if (bim) { bim.reportando = !bim.reportando; renderBimUi(); } return;
     case 'tema': { const d = oscuro() ? 'light' : 'dark'; document.documentElement.dataset.theme = d; try { localStorage.setItem('baco-obra-tema', d); } catch { /* */ } renderChrome(); return; }
     case 'reportar': abrirForm(); return;

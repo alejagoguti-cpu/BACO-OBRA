@@ -364,3 +364,46 @@ body[data-modo="pais"] .dock,body[data-modo="pais"] #hint,body[data-modo="pais"]
 .mapcard>.glass{flex:none}
 .mapcard>.hlist{flex:1 1 auto;min-height:0}
 .solo .sheet{max-height:none}
+
+/* ---------- guía de pasos, flechas y marcas de ayuda ---------- */
+.pasos{display:flex;align-items:center;gap:4px;padding:6px 8px;border-radius:99px;margin:0 auto;flex-wrap:nowrap;overflow-x:auto;max-width:100%}
+.paso{display:flex;align-items:center;gap:8px;padding:6px 12px 6px 6px;border-radius:99px;font-weight:800;font-size:13px;color:var(--muted);text-decoration:none;white-space:nowrap}
+.paso .pnum{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:var(--soft);color:var(--muted);font-size:12.5px;flex:none}
+.paso .pnum .ic{width:14px;height:14px}
+.paso.hecho{color:var(--ink2)}.paso.hecho .pnum{background:var(--teal);color:#fff}
+.paso.actual{background:var(--black);color:var(--onBlack)}.paso.actual .pnum{background:var(--coral);color:#fff;animation:bpulse 1.6s infinite}
+.pchev{color:var(--muted);display:grid;place-items:center}.pchev .ic{width:16px;height:16px}
+.bimpasos{margin:0}
+.rail a{flex-direction:column;gap:2px;height:auto;min-height:46px;width:58px;border-radius:16px;padding:7px 2px}
+.rail a .rtx{font-size:9.5px;font-weight:800;line-height:1;letter-spacing:.01em}
+.rail a .lbl{left:66px}
+.cta{position:relative;overflow:hidden}
+.cta .go{margin-left:auto;display:grid;place-items:center;width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.22);animation:empuja 1.4s ease-in-out infinite}
+@keyframes empuja{50%{transform:translateX(4px)}}
+.cta::after{content:"";position:absolute;inset:0;background:linear-gradient(110deg,transparent 35%,rgba(255,255,255,.35) 50%,transparent 65%);transform:translateX(-100%);animation:brillo 2.8s ease-in-out infinite}
+@keyframes brillo{60%,100%{transform:translateX(100%)}}
+.tapme{position:fixed;z-index:32;left:50%;top:40%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:6px;background:none;border:0;cursor:pointer}
+.tapbub{display:flex;align-items:center;gap:8px;padding:12px 18px;border-radius:99px;background:var(--coral);color:#fff;font-weight:800;font-size:15px;box-shadow:0 14px 30px -10px rgba(232,96,79,.75);white-space:nowrap}
+.taparrow{color:var(--coral);filter:drop-shadow(0 4px 6px rgba(0,0,0,.25));animation:baja 1.1s ease-in-out infinite}
+.taparrow .ic{width:42px;height:42px}
+@keyframes baja{50%{transform:translateY(10px)}}
+.tapring{width:70px;height:26px;border-radius:50%;border:3px solid var(--coral);animation:onda 1.6s ease-out infinite;margin-top:-6px}
+@keyframes onda{from{transform:scale(.5);opacity:1}to{transform:scale(1.6);opacity:0}}
+.eabre{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:800;color:var(--ink);margin-top:2px}
+.eabre .ic{width:15px;height:15px;transition:transform .2s}
+.esp:hover .eabre .ic{transform:translateX(4px)}
+.coach{position:absolute;inset:0;z-index:5;background:rgba(10,16,22,.35);display:grid;place-items:center;pointer-events:auto}
+.coach .cm{position:absolute;max-width:270px;background:var(--card);border-radius:20px;padding:14px 16px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:3px;animation:up .45s cubic-bezier(.2,.8,.2,1) both}
+.coach .cm b{font-size:15px}.coach .cm small{color:var(--muted);font-size:13px}
+.coach .cm1{top:96px;left:50%;transform:translateX(-20%)}
+.coach .cm2{top:45%;left:50%;transform:translate(-50%,-50%);align-items:center;text-align:center;animation-delay:.12s}
+.coach .cm3{right:max(14px,env(safe-area-inset-right,0px));bottom:calc(84px + env(safe-area-inset-bottom,0px));animation-delay:.24s}
+.coach .cmar{color:var(--coral);display:grid;place-items:center}
+.coach .cmar .ic{width:30px;height:30px;animation:baja 1.1s ease-in-out infinite}
+.coach .cmar.up{transform:rotate(180deg)}
+.coach .cmic .ic{width:34px;height:34px;color:var(--teal)}
+.coach .cm3 .cmar{align-self:flex-end}
+.coach .btn{position:absolute;left:50%;bottom:calc(30px + env(safe-area-inset-bottom,0px));transform:translateX(-50%)}
+.bimtip{display:flex;align-items:center;gap:8px}
+@media (max-width:1100px){.topbar .pasos .ptx{display:none}.topbar .pasos .paso.actual .ptx{display:inline}}
+@media (max-width:720px){.topbar .pasos{display:none}.rail a{width:46px}.rail a .rtx{display:none}.coach .cm1{left:14px;transform:none}.bimpasos{display:none}}
