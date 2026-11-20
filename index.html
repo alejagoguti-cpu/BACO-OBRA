@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#EAF0F4" />
+  <meta name="description" content="BACO Obra: gestión BIM de la remodelación Torre Suites del Hotel La Fontana. Prototipo piso 2." />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27%3E%3Crect width=%2724%27 height=%2724%27 rx=%277%27 fill=%27%23141A21%27/%3E%3Cpath d=%27M7 18V9l5-3 5 3v9M10 18v-4h4v4%27 fill=%27none%27 stroke=%27%237DDBC6%27 stroke-width=%271.8%27/%3E%3C/svg%3E" />
+  <title>BACO Obra · Torre Suites</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Urbanist:wght@400;500;600;700;800;900&display=swap" />
+  <link rel="stylesheet" href="./src/style.css" />
+  <style>
+    html,body{margin:0;height:100%;background:#EAF0F4;overflow:hidden}
+    #cesiumContainer{position:fixed;inset:0;background:radial-gradient(1200px 800px at 50% 30%,#F6F9FB,#DCE6EE)}
+    .dock,#hint,#status,.brand,.clock{display:none!important}
+    #loading{z-index:80}
+    #loading[hidden]{display:none!important}
+    #loading{background:transparent!important;pointer-events:none;place-items:end center!important;padding-bottom:110px}
+    #loading .inner{pointer-events:auto;background:rgba(255,255,255,.82);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border-radius:26px;box-shadow:0 18px 40px -16px rgba(22,32,43,.35);padding:18px 26px!important;grid-template-columns:auto 1fr;align-items:center;justify-items:start!important;text-align:left!important;column-gap:16px!important;min-width:min(420px,calc(100vw - 32px))}
+    #loading .logos{grid-row:span 4}
+    #loading .logo-baco{width:58px!important;height:58px!important}
+    #loading h2{margin:0!important;font-size:18px!important;letter-spacing:.12em!important}
+    #loading .sub{margin:0!important}
+    #loading .track,#loading .meta{width:100%!important}
+    body[data-modo="pais"] .tiempo,body[data-modo="pais"] .pisos{display:none!important}
+    .pisos{left:auto!important;right:max(14px,env(safe-area-inset-right,0px))!important;top:84px!important;z-index:29!important}
+  </style>
+</head>
+<body data-modo="pais">
+  <div id="cesiumContainer"></div>
+
+  <!-- elementos que usa la escena de La Fontana (HLF) -->
+  <div class="clock" hidden><span id="clockLabel">10:10</span></div>
+  <div id="hint"></div>
+  <div id="status" class="chip" hidden><span class="dot"></span><span id="statusText"></span></div>
+  <aside id="card" class="card" hidden>
+    <button id="cardClose" aria-label="Cerrar">×</button>
+    <small id="cardKind"></small><strong id="cardTitle"></strong><dl id="cardData"></dl>
+    <div class="row"><button id="cardFocus">Enfocar</button><button id="cardWalk">Ir a pie</button></div>
+  </aside>
+  <nav class="dock" aria-hidden="true">
+    <div class="group" hidden><button data-light="dia" class="on">Día</button><button data-light="tarde">Tarde</button><button data-light="noche">Noche</button></div>
+    <div class="group"><button id="btnHome">Vista general</button><button id="btnAerial">Aérea</button><button id="btnEdificioCompleto" class="on">Edificio completo</button><button id="btnPiso2">Piso 2</button></div>
+    <div class="group"><button id="btnPins">Puntos clave</button><button id="btnOrbit">Giro 360°</button></div>
+  </nav>
+  <div id="loading" hidden>
+    <div class="inner">
+      <div class="logos"><img class="logo-baco" src="./logos/baco.png" alt="BACO Studio" /></div>
+      <h2>Hotel La Fontana</h2>
+      <p class="sub">Entrando a Bogotá · Torre Suites</p>
+      <div class="track"><div id="loadBar"></div></div>
+      <div class="meta"><span id="loadLabel">Cargando la escena del hotel…</span><span id="loadPct">0%</span></div>
+      <button id="btnEntrar" disabled hidden>Cargando…</button>
+    </div>
+  </div>
+
+  <div id="app"></div>
+  <script type="module" src="./src/app/app.ts"></script>
+</body>
+</html>

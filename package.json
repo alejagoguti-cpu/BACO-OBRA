@@ -1,0 +1,28 @@
+{
+  "name": "baco-obra",
+  "version": "1.0.0",
+  "description": "BACO Obra - gestion BIM de la remodelacion Torre Suites",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build && node tools/copy-cesium.mjs",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "cesium": "^1.126.0",
+    "three": "^0.170.0",
+    "qrcode": "1.5.4"
+  },
+  "devDependencies": {
+    "puppeteer-core": "^25.17.0",
+    "typescript": "^5.9.3",
+    "vite": "^5.4.21",
+    "@types/three": "0.170.0",
+    "@types/qrcode": "1.5.5"
+  }
+}
