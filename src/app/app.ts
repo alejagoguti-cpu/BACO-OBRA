@@ -12,6 +12,9 @@ import './shell.css';
 import { iniciarAuth, perfil, salir, alCambiarSesion, ROL_TXT } from './auth';
 import { mostrarAcceso, cerrarAcceso, mostrarAprobacion, mostrarNuevaClave } from './login';
 import { conectarPresencia, desconectarPresencia, alCambiarPresencia, informarUbicacion, type Presente } from './presence';
+import { vResumen, montarResumen, detalleKpi, enviarAvance, validar, F as FR } from './resumen';
+import { iniciarAvance, alCambiarAvance } from './avance';
+import { filtro as filtroNovUI } from '../twin/nov-ui';
 import { iniciarNovedades, alCambiarNovedades, detenerNovedades } from './novedades';
 import { montarWorkspace, abrirWorkspace, ocultarWorkspace, parseRuta, migas } from '../twin/workspace';
 
@@ -33,13 +36,13 @@ const $ = (id: string) => document.getElementById(id)!;
 const NAV: [string, string, string][] = [
   ['mapa', 'Hoteles Colombia', 'globe'], ['fontana', 'Gemelo La Fontana', 'cube'], ['plan', 'Planeación', 'plan'], ['bim', 'Modelo BIM', 'obra'],
   ['novedades', 'Novedades', 'pin'], ['qr', 'Códigos QR', 'qr'], ['habitacion-216', 'Habitación 216', 'eye'],
-  ['panel', 'Resumen', 'panel'], ['ia', 'Asistente', 'spark'],
+  ['resumen', 'Resumen', 'panel'], ['ia', 'Asistente', 'spark'],
 ];
-const NAV_SEC: [string, string[]][] = [['Exploración espacial', ['mapa', 'fontana', 'bim', 'habitacion-216']], ['Gestión de obra', ['novedades', 'plan', 'panel', 'ia', 'qr']]];
+const NAV_SEC: [string, string[]][] = [['Exploración espacial', ['mapa', 'fontana', 'bim', 'habitacion-216']], ['Gestión de obra', ['novedades', 'resumen', 'plan', 'ia', 'qr']]];
 let compacta = false; try { compacta = localStorage.getItem('baco-side') === 'compacta'; } catch { /* */ }
 document.body.classList.toggle('side-compact', compacta);
 let presentes: Presente[] = [];
-const PAGES = ['panel', 'ia', 'plan', 'avance', 'proveedores', 'novedades', 'qr', 'entregables', 'honorarios'];
+const PAGES = ['resumen', 'panel', 'ia', 'plan', 'avance', 'proveedores', 'novedades', 'qr', 'entregables', 'honorarios'];
 let route = ''; let anim = true;
 let disposePrototype: (() => void) | null = null;
 const filtroNov = { esp: 'todas', est: 'abiertas', q: '' };
@@ -199,7 +202,7 @@ function renderLogin(): void {
 async function trasLogin(): Promise<void> {
   cerrarAcceso();
   sincronizarPerfil();
-  if (perfil) { conectarPresencia(perfil); void iniciarNovedades(); toast(`Sesión iniciada · ${perfil.nombre}`); }
+  if (perfil) { conectarPresencia(perfil); void iniciarNovedades(); void iniciarAvance(); toast(`Sesión iniciada · ${perfil.nombre}`); }
   $('layer').innerHTML = '';
   let pend = ''; try { pend = sessionStorage.getItem('baco-qr-pendiente') || ''; sessionStorage.removeItem('baco-qr-pendiente'); } catch { /* */ }
   const actual = location.hash.slice(1);
@@ -521,7 +524,7 @@ function renderPage(): void {
   const page = $('page');
   const base = route.split('-')[0];
   if (!PAGES.includes(base)) { page.innerHTML = ''; page.className = ''; return; }
-  const html = base === 'panel' ? vPanel() : base === 'ia' ? vAsistente(aiChat, waLog, modo360) : base === 'plan' ? vPlanPiso2() : base === 'avance' ? vAvance(habFiltro) : base === 'proveedores' ? vProveedores()
+  const html = base === 'resumen' ? vResumen() : base === 'panel' ? vPanel() : base === 'ia' ? vAsistente(aiChat, waLog, modo360) : base === 'plan' ? vPlanPiso2() : base === 'avance' ? vAvance(habFiltro) : base === 'proveedores' ? vProveedores()
     : base === 'novedades' ? vNovedadesPiso2() : base === 'qr' ? vQR() : base === 'entregables' ? vEntregables() : vHonorarios();
   const y = page.scrollTop;
   const focusId = document.activeElement?.id;
@@ -535,6 +538,7 @@ function renderPage(): void {
     if (el) { el.focus(); if (selStart !== null && el.setSelectionRange) el.setSelectionRange(selStart, selStart); }
   }
   if (base === 'qr') void pintarQR();
+  if (base === 'resumen') montarResumen();
   if (route.startsWith('plan-')) document.getElementById(route)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 async function pintarQR(): Promise<void> {
@@ -646,6 +650,10 @@ app.addEventListener('click', async (ev) => {
     case 'piso2': piso2Open = !piso2Open; W.HLF?.piso2(); renderOv(); return;
     case 'completo': piso2Open = false; W.HLF?.completo(); renderOv(); return;
     case 'irRuta': location.hash = v; return;
+    case 'rsKpi': $('layer').innerHTML = detalleKpi(v); return;
+    case 'rsZoom': FR.zoom = v as typeof FR.zoom; renderPage(); return;
+    case 'rsEsp': try { sessionStorage.setItem('twin-aislar', v); } catch { /* */ } location.hash = 'fontana/piso-2'; return;
+    case 'rsValidar': await validar(+v); return;
     case 'aiPrompt': {
       const r = responderIA(v);
       aiChat.push({ q: v, ...r });
@@ -779,6 +787,7 @@ app.addEventListener('input', (ev) => {
 });
 app.addEventListener('change', async (ev) => {
   const t = ev.target as HTMLInputElement;
+  if (t.dataset.rsf) { (FR as Record<string, string>)[t.dataset.rsf] = t.value; anim = false; renderPage(); return; }
   if (t.id === 'nFoto' && t.files?.[0] && form) {
     leerForm();
     try { form.foto = await comprimirFoto(t.files[0]); } catch { toast('No se pudo leer la foto. Prueba con otra.'); }
@@ -814,6 +823,7 @@ app.addEventListener('submit', async (ev) => {
     else location.hash = dest;
     return;
   }
+  if (f.id === 'fRsAvance') { await enviarAvance(f); f.reset(); return; }
   if (f.id === 'fBuscar') {
     const q = (document.getElementById('q') as HTMLInputElement).value.trim().toLowerCase(); if (!q) return;
     const h = HOTELES.find((x) => x.nombre.toLowerCase().includes(q) || x.ciudad.toLowerCase().includes(q));
@@ -933,6 +943,8 @@ montarWorkspace($('twin'));
 addEventListener('twin:ruta', () => { route = decodeURIComponent(location.hash.slice(1)); renderChrome(); });
 alCambiarPresencia((l) => { presentes = l; pintarWho(); });
 alCambiarSesion((ev) => { if (ev === 'PASSWORD_RECOVERY') location.hash = 'nueva-clave'; });
-void iniciarAuth().then((p) => { if (p) { sincronizarPerfil(); conectarPresencia(p); void iniciarNovedades(); } void go(); });
+void iniciarAuth().then((p) => { if (p) { sincronizarPerfil(); conectarPresencia(p); void iniciarNovedades(); void iniciarAvance(); } void go(); });
+alCambiarAvance(() => { if (route === 'resumen') renderPage(); });
+addEventListener('rs:novedades', (e) => { const d = (e as CustomEvent).detail as { fecha: string; tipo: 'nueva' | 'retraso' | 'imprevisto' }; filtroNovUI.periodo = 'dia'; filtroNovUI.fecha = d.fecha; filtroNovUI.tipos = new Set([d.tipo]); location.hash = 'novedades'; });
 alCambiarNovedades(() => { if (!perfil) return; renderChrome(); bim?.setPins(listaNovedades()); if (PAGES.includes(route.split('-')[0]) && !parseRuta(route)) { renderPage(); } });
 

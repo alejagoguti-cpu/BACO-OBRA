@@ -1,0 +1,11 @@
+import puppeteer from 'puppeteer-core';
+const BASE = process.argv[2] || 'http://127.0.0.1:4321/BACO-OBRA/';
+const b = await puppeteer.launch({ executablePath: 'C:/Program Files/Google/Chrome/Application/chrome.exe', headless: 'new', args: ['--no-sandbox', '--window-size=1600,900'] });
+const p = await b.newPage(); await p.setViewport({ width: 1600, height: 900 });
+const errs = []; p.on('pageerror', (e) => errs.push(e.message)); p.on('console', (m) => { if (m.type() === 'error') errs.push(m.text().slice(0, 200)); });
+await p.goto(BASE + '?demo#resumen', { waitUntil: 'networkidle2' }); await new Promise((r) => setTimeout(r, 3000));
+const box = await (await p.$('#rsLinea')).boundingBox(); await p.mouse.move(box.x + box.width * 0.35, box.y + 120); await new Promise((r) => setTimeout(r, 500));
+await p.screenshot({ path: 'build/cap/r1-resumen.jpg', type: 'jpeg', quality: 78 });
+await p.evaluate(() => document.querySelector('#page').scrollTo(0, 700)); await new Promise((r) => setTimeout(r, 600));
+await p.screenshot({ path: 'build/cap/r2-resumen.jpg', type: 'jpeg', quality: 78 });
+console.log(errs.join('\n') || 'sin errores'); await b.close();

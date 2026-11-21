@@ -154,6 +154,8 @@ function cerrarGemelo(): void {
 function render(): void {
   const ui = $('#twUi'); if (!ui) return;
   if (ruta.v === 'novedades') { renderNov(); return; }
+  let aislar = ''; try { aislar = sessionStorage.getItem('twin-aislar') || ''; } catch { /* */ }
+  if (aislar && stage?.modo === 'planta') { try { sessionStorage.removeItem('twin-aislar'); } catch { /* */ } if (stage.aislada !== aislar && ESPECIALIDADES.some((e) => e.id === aislar && e.cats.length)) stage.aislarCapa(aislar); }
   const s = stage;
   const modo = s?.modo ?? 'edificio';
   let html = '';
