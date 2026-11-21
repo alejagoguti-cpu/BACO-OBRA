@@ -14,7 +14,7 @@ export const sb: SupabaseClient | null = URL_SB && KEY_SB
   : null;
 export const backendListo = () => !!sb;
 /** prototipo: cualquier persona entra con cualquier correo y contraseña */
-export const ACCESO_ABIERTO = true;
+export const ACCESO_ABIERTO = false; // cerrado 2026-11-21: las cuentas las crea administración (página Equipo)
 
 export type RolTwin = 'admin' | 'estelar' | 'bim' | 'contratista' | 'consulta';
 export interface Perfil { id: string; email: string; nombre: string; rol: RolTwin; empresa: string; metodo: 'password' | 'qr' }
@@ -69,7 +69,9 @@ export async function entrarConClave(email: string, clave: string): Promise<stri
     const { error: ef } = await sb.functions.invoke('acceso-abierto', { body: { email, password: pw } });
     if (ef) { let m = ''; try { m = (await (ef as { context?: Response }).context?.json())?.error ?? ''; } catch { /* */ } return m || 'No se pudo abrir la sesión. Intenta de nuevo.'; }
   }
-  const { error } = await sb.auth.signInWithPassword({ email: email.trim().toLowerCase(), password: pw });
+  let { error } = await sb.auth.signInWithPassword({ email: email.trim().toLowerCase(), password: pw });
+  // cuentas creadas durante el acceso abierto guardaron la clave con prefijo; las creadas por administración, sin él
+  if (error && /Invalid login/i.test(error.message)) ({ error } = await sb.auth.signInWithPassword({ email: email.trim().toLowerCase(), password: ACCESO_ABIERTO ? clave : 'baco-abierto:' + clave }));
   if (error) return /Invalid login/i.test(error.message) && ACCESO_ABIERTO ? 'Ese correo ya entró antes con otra contraseña. Usa la misma de la primera vez.' : errorEs(error.message);
   await registrarAcceso('password');
   return null;

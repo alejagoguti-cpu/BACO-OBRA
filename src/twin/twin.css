@@ -213,3 +213,32 @@
 .nv-day span{font-size:10.5px;font-weight:600;border-left:3px solid var(--c);padding-left:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .nv-day small,.nv-day em{font-size:10.5px;color:var(--tw-muted);font-style:normal}
 @media (max-width:720px){.nv-side{bottom:auto;max-height:42%;top:calc(var(--top-h,72px) + 50px)}.nv-tl{display:none}.nv-det,.nv-form-p{top:auto;bottom:76px;max-height:60%}}
+
+/* personas sobre la planta */
+#twin .nv-gente{position:absolute;inset:0;z-index:4;pointer-events:none;overflow:hidden}
+.nv-per{position:absolute;left:0;top:0;pointer-events:auto;cursor:pointer;border:0;padding:0;background:none;will-change:transform}
+.nv-per .av{position:absolute;left:-17px;top:-17px;width:34px;height:34px;border-radius:50%;background:#dfe3e8 center/cover no-repeat;display:grid;place-items:center;font:800 11px var(--f,sans-serif);color:#0E3064;box-shadow:0 0 0 2.5px var(--ring),0 6px 14px -6px rgba(0,0,0,.5);transition:transform .15s}
+.nv-per.asignado .av{filter:grayscale(.85);opacity:.85}
+.nv-per .es{position:absolute;left:8px;top:6px;width:12px;height:12px;border-radius:50%;background:var(--c);box-shadow:0 0 0 2px #fff}
+.nv-per:hover .av,.nv-per.on .av{transform:scale(1.18)}
+.nv-per .nm{position:absolute;left:50%;top:19px;transform:translateX(-50%);white-space:nowrap;font:700 10px var(--f,sans-serif);background:rgba(255,255,255,.92);border-radius:5px;padding:1px 5px;opacity:0;pointer-events:none;transition:opacity .15s}
+.nv-per:hover .nm,.nv-per.on .nm{opacity:1}
+.nv-mas{position:absolute;left:-13px;top:-13px;width:26px;height:26px;border-radius:50%;background:#0E3064;color:#fff;font:800 10.5px var(--f,sans-serif);display:grid;place-items:center;box-shadow:0 0 0 2px #fff}
+.nv-equipo{border:1px solid var(--tw-line);border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:8px}
+.nv-equipo .tw-lbl{display:flex;justify-content:space-between;align-items:center}
+.nv-caras{display:flex;flex-wrap:wrap;gap:6px}
+.nv-cara{all:unset;cursor:pointer;display:flex;align-items:center;gap:7px;padding:4px 8px 4px 4px;border-radius:999px;border:1px solid var(--tw-line);font-size:12px;font-weight:600}
+.nv-cara i{width:26px;height:26px;border-radius:50%;background:#dfe3e8 center/cover no-repeat;display:grid;place-items:center;font:800 10px var(--f,sans-serif);color:#0E3064;box-shadow:0 0 0 2px var(--ring);font-style:normal}
+.nv-cara.asignado i{filter:grayscale(.85)}
+.nv-cara small{color:var(--tw-muted);font-weight:500}
+.nv-equipo select{font:600 12px var(--f,sans-serif);color:var(--tw-ink);background:rgba(255,255,255,.55);border:1px solid var(--tw-line);border-radius:8px;padding:7px 8px}
+.nv-leyenda{display:flex;flex-wrap:wrap;gap:8px;font-size:11px;color:var(--tw-muted)}
+.nv-leyenda span{display:inline-flex;align-items:center;gap:4px}.nv-leyenda i{width:9px;height:9px;border-radius:50%;display:inline-block}
+.nv-perfil{display:flex;gap:14px;align-items:center}
+.nv-perfil .foto{width:84px;height:84px;border-radius:18px;background:#dfe3e8 center/cover no-repeat;display:grid;place-items:center;font:800 24px var(--f,sans-serif);color:#0E3064;flex:none}
+
+.nv-per .av{box-shadow:0 0 0 3px var(--ring),0 6px 14px -6px rgba(0,0,0,.5)}
+.nv-per .lb{position:absolute;left:50%;top:18px;transform:translateX(-50%);font:800 8.5px var(--f,sans-serif);letter-spacing:.06em;color:#fff;background:var(--ring);border-radius:4px;padding:1px 4px;white-space:nowrap;box-shadow:0 0 0 1.5px #fff}
+.nv-per .ok{position:absolute;left:9px;top:-19px;width:11px;height:11px;border-radius:50%;background:#1E9A62;box-shadow:0 0 0 2px #fff}
+.nv-per .nm{top:31px}
+.nv-per .es{display:none}

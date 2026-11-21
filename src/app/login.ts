@@ -82,9 +82,9 @@ function pintar(): void {
         </div>` : tab === 'cuenta' ? `
         <form class="acc-form" id="fAccCuenta">
           <label>Correo corporativo<input type="email" name="email" autocomplete="username" required></label>
-          <label>Contraseña<input type="password" name="clave" autocomplete="current-password" required ${ACCESO_ABIERTO ? '' : 'minlength="6"'}></label>
+          <label>Contraseña<input type="password" name="clave" autocomplete="current-password" required></label>
           <button class="acc-btn pri">Ingresar ${ic('arrowR', 2)}</button>
-          ${ACCESO_ABIERTO ? '<p class="acc-muted acc-fine">Prototipo con acceso abierto: entra con cualquier correo y una contraseña. La primera vez se crea tu cuenta; después usa la misma contraseña.</p>' : '<div class="acc-links"><button type="button" data-acc="tab" data-v="recuperar">¿Olvidaste tu contraseña?</button><button type="button" data-acc="tab" data-v="registro">Solicitar cuenta</button></div>'}
+          ${ACCESO_ABIERTO ? '<p class="acc-muted acc-fine">Prototipo con acceso abierto: entra con cualquier correo y una contraseña. La primera vez se crea tu cuenta; después usa la misma contraseña.</p>' : '<div class="acc-links"><button type="button" data-acc="tab" data-v="recuperar">¿Olvidaste tu contraseña?</button><span class="acc-muted">¿Sin cuenta? Pídela a administración</span></div>'}
         </form>` : tab === 'registro' ? `
         <form class="acc-form" id="fAccRegistro">
           <label>Nombre completo<input name="nombre" autocomplete="name" required></label>

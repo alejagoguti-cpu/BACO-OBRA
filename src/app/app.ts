@@ -13,6 +13,8 @@ import { iniciarAuth, perfil, salir, alCambiarSesion, ROL_TXT } from './auth';
 import { mostrarAcceso, cerrarAcceso, mostrarAprobacion, mostrarNuevaClave } from './login';
 import { conectarPresencia, desconectarPresencia, alCambiarPresencia, informarUbicacion, type Presente } from './presence';
 import { vChat, preguntar, alCambiarChat } from './asistente';
+import { iniciarPersonal, alCambiarPersonal } from './personal';
+import { vEquipo, cargarEquipo, pintarQrsEquipo, eventoEquipo, crearCuenta, mostrarCheckin } from './equipo';
 import { vResumen, montarResumen, detalleKpi, enviarAvance, validar, F as FR } from './resumen';
 import { iniciarAvance, alCambiarAvance } from './avance';
 import { filtro as filtroNovUI } from '../twin/nov-ui';
@@ -45,13 +47,13 @@ const $ = (id: string) => document.getElementById(id)!;
 const NAV: [string, string, string][] = [
   ['mapa', 'Hoteles Colombia', 'globe'], ['fontana', 'Gemelo La Fontana', 'cube'], ['plan', 'Planeación', 'plan'], ['bim', 'Modelo BIM', 'obra'],
   ['novedades', 'Novedades', 'pin'], ['qr', 'Códigos QR', 'qr'], ['habitacion-216', 'Habitación 216', 'eye'],
-  ['resumen', 'Resumen', 'panel'], ['asistente', 'Asistente', 'spark'],
+  ['resumen', 'Resumen', 'panel'], ['asistente', 'Asistente', 'spark'], ['equipo', 'Equipo', 'user'],
 ];
-const NAV_SEC: [string, string[]][] = [['Exploración espacial', ['mapa', 'fontana', 'bim', 'habitacion-216']], ['Gestión de obra', ['novedades', 'resumen', 'asistente', 'plan', 'qr']]];
+const NAV_SEC: [string, string[]][] = [['Exploración espacial', ['mapa', 'fontana', 'bim', 'habitacion-216']], ['Gestión de obra', ['novedades', 'resumen', 'asistente', 'plan', 'equipo', 'qr']]];
 let compacta = false; try { compacta = localStorage.getItem('baco-side') === 'compacta'; } catch { /* */ }
 document.body.classList.toggle('side-compact', compacta);
 let presentes: Presente[] = [];
-const PAGES = ['asistente', 'resumen', 'panel', 'ia', 'plan', 'avance', 'proveedores', 'novedades', 'qr', 'entregables', 'honorarios'];
+const PAGES = ['equipo', 'asistente', 'resumen', 'panel', 'ia', 'plan', 'avance', 'proveedores', 'novedades', 'qr', 'entregables', 'honorarios'];
 let route = ''; let anim = true;
 let disposePrototype: (() => void) | null = null;
 const filtroNov = { esp: 'todas', est: 'abiertas', q: '' };
@@ -202,7 +204,7 @@ function renderLogin(): void {
 async function trasLogin(): Promise<void> {
   cerrarAcceso();
   sincronizarPerfil();
-  if (perfil) { conectarPresencia(perfil); void iniciarNovedades(); void iniciarAvance(); toast(`Sesión iniciada · ${perfil.nombre}`); }
+  if (perfil) { conectarPresencia(perfil); void iniciarNovedades(); void iniciarAvance(); void iniciarPersonal(); void cargarEquipo().then(() => { if (route === 'equipo') renderPage(); }); toast(`Sesión iniciada · ${perfil.nombre}`); }
   $('layer').innerHTML = '';
   let pend = ''; try { pend = sessionStorage.getItem('baco-qr-pendiente') || ''; sessionStorage.removeItem('baco-qr-pendiente'); } catch { /* */ }
   const actual = location.hash.slice(1);
@@ -546,7 +548,7 @@ function renderPage(): void {
   const page = $('page');
   const base = route.split('-')[0];
   if (!PAGES.includes(base)) { page.innerHTML = ''; page.className = ''; return; }
-  const html = base === 'asistente' ? `<header class="rs-head"><div><p class="eyebrow">ASISTENTE BIM · SOLO CONSULTA</p><h1>Pregúntale <b>a la obra.</b></h1><p class="sub">Responde con novedades, cronograma, avances validados y responsables registrados, y cita cada registro. No modifica datos.</p></div><a class="btn" href="#ia">${ic('wa')} Bitácora WhatsApp y 360° (demo anterior)</a></header>${vChat(false)}` : base === 'resumen' ? vResumen() : base === 'panel' ? vPanel() : base === 'ia' ? vAsistente(aiChat, waLog, modo360) : base === 'plan' ? vPlanPiso2() : base === 'avance' ? vAvance(habFiltro) : base === 'proveedores' ? vProveedores()
+  const html = base === 'equipo' ? vEquipo() : base === 'asistente' ? `<header class="rs-head"><div><p class="eyebrow">ASISTENTE BIM · SOLO CONSULTA</p><h1>Pregúntale <b>a la obra.</b></h1><p class="sub">Responde con novedades, cronograma, avances validados y responsables registrados, y cita cada registro. No modifica datos.</p></div><a class="btn" href="#ia">${ic('wa')} Bitácora WhatsApp y 360° (demo anterior)</a></header>${vChat(false)}` : base === 'resumen' ? vResumen() : base === 'panel' ? vPanel() : base === 'ia' ? vAsistente(aiChat, waLog, modo360) : base === 'plan' ? vPlanPiso2() : base === 'avance' ? vAvance(habFiltro) : base === 'proveedores' ? vProveedores()
     : base === 'novedades' ? vNovedadesPiso2() : base === 'qr' ? vQR() : base === 'entregables' ? vEntregables() : vHonorarios();
   const y = page.scrollTop;
   const focusId = document.activeElement?.id;
@@ -561,6 +563,7 @@ function renderPage(): void {
   }
   if (base === 'qr') void pintarQR();
   if (base === 'resumen') montarResumen();
+  if (base === 'equipo') void pintarQrsEquipo();
   if (route.startsWith('plan-')) document.getElementById(route)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 async function pintarQR(): Promise<void> {
@@ -578,6 +581,7 @@ async function go(): Promise<void> {
   const base = h.split('-')[0];
   app.dataset.view = base || 'mapa';
   document.body.classList.toggle('con-sesion', !!perfil);
+  if (h.startsWith('checkin/')) { const [, hab, tok] = h.split('/'); $('rail').hidden = true; $('topbar').hidden = true; ocultarWorkspace(); $('page').innerHTML = ''; $('ov').innerHTML = ''; await mostrarCheckin($('layer'), hab, tok ?? ''); return; }
   if (h === 'nueva-clave') { $('rail').hidden = true; $('topbar').hidden = true; mostrarNuevaClave($('layer'), () => { $('layer').innerHTML = ''; location.hash = 'mapa'; }); return; }
   if (h.startsWith('qr-aprobar/')) {
     const [, id, nonce] = h.split('/');
@@ -821,6 +825,7 @@ app.addEventListener('input', (ev) => {
 });
 app.addEventListener('change', async (ev) => {
   const t = ev.target as HTMLInputElement;
+  if (t.dataset.eq && await eventoEquipo(t)) return;
   if (t.dataset.rsf) { (FR as Record<string, string>)[t.dataset.rsf] = t.value; anim = false; renderPage(); return; }
   if (t.id === 'nFoto' && t.files?.[0] && form) {
     leerForm();
@@ -857,6 +862,7 @@ app.addEventListener('submit', async (ev) => {
     else location.hash = dest;
     return;
   }
+  if (f.id === 'fEqCuenta') { await crearCuenta(f); renderPage(); return; }
   if (f.id === 'fAs' || f.id === 'fAsP') { const q = String(new FormData(f).get('q') ?? '').trim(); if (q) { f.reset(); void preguntar(q); } return; }
   if (f.id === 'fRsAvance') { await enviarAvance(f); f.reset(); return; }
   if (f.id === 'fBuscar') {
@@ -977,7 +983,8 @@ void cargarNovedades().then(() => { renderChrome(); if (PAGES.includes(route.spl
 addEventListener('twin:ruta', () => { route = decodeURIComponent(location.hash.slice(1)); renderChrome(); });
 alCambiarPresencia((l) => { presentes = l; pintarWho(); });
 alCambiarSesion((ev) => { if (ev === 'PASSWORD_RECOVERY') location.hash = 'nueva-clave'; });
-void iniciarAuth().then((p) => { if (p) { sincronizarPerfil(); conectarPresencia(p); void iniciarNovedades(); void iniciarAvance(); } void go(); });
+void iniciarAuth().then((p) => { if (p) { sincronizarPerfil(); conectarPresencia(p); void iniciarNovedades(); void iniciarAvance(); void iniciarPersonal(); void cargarEquipo(); } void go(); });
+alCambiarPersonal(() => { if (route === 'equipo') renderPage(); });
 function pintarPanelAs(): void { const pa = $('asisPanel'); if (pa.hidden) return; pa.innerHTML = vChat(true); const l = document.getElementById('asLogP'); if (l) l.scrollTop = l.scrollHeight; }
 alCambiarChat(() => { pintarPanelAs(); if (route === 'asistente') { renderPage(); const l = document.getElementById('asLog'); if (l) l.scrollTop = l.scrollHeight; } });
 alCambiarAvance(() => { if (route === 'resumen') renderPage(); });

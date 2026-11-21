@@ -8,6 +8,7 @@ import { novedades, alCambiarNovedades, crearNovedad, actualizarNov, comentarNov
 import { perfil, puedeEditar } from '../app/auth';
 import { informarUbicacion } from '../app/presence';
 import { esc, ic, toast } from '../app/ui';
+import { listaPersonal, enHabitacion, fotoDe, alCambiarPersonal, asignar, quitarAsignacion, dentroAhora, habitacionesDe, sinUbicar, iniciales, espPersona, ESP_PERSONA, type Persona } from '../app/personal';
 
 type Periodo = 'todo' | 'dia' | 'semana' | 'mes';
 export interface FiltroNov { tipos: Set<TipoNov>; estado: 'abiertas' | 'todas' | EstadoNov; esp: string; hab: string; resp: string; periodo: Periodo; fecha: string }
@@ -48,7 +49,9 @@ export function activarNovedades(s: Stage, host: HTMLElement, sub: string[]): vo
   stage = s; ui = host;
   if (!activo) {
     activo = true;
-    quitarSub = alCambiarNovedades(() => { if (activo) render(); });
+    const q1 = alCambiarNovedades(() => { if (activo) render(); });
+    const q2 = alCambiarPersonal(() => { firmaGente = ''; if (activo) render(); });
+    quitarSub = () => { q1(); q2(); };
     loop();
   }
   // subrutas: novedades/hab/216 · novedades/n/N-0001 · novedades/nueva/216
@@ -61,7 +64,7 @@ export function activarNovedades(s: Stage, host: HTMLElement, sub: string[]): vo
 export function desactivarNovedades(): void {
   activo = false; cancelAnimationFrame(raf); quitarSub?.(); quitarSub = null;
   stage?.elegirPunto(null); creando = null;
-  pins?.remove(); pins = null;
+  pins?.remove(); pins = null; gente?.remove(); gente = null; firmaGente = ''; personaSel = null;
 }
 export const novedadesActivo = () => activo;
 /** clic en una habitación de la planta mientras el módulo está activo */
@@ -74,10 +77,82 @@ export function habitacionTocada(num: string | null): void {
 }
 
 /* ---------------- marcadores agrupados ---------------- */
+/* ---------------- personas sobre la planta ---------------- */
+let gente: HTMLElement | null = null; let firmaGente = ''; let personaSel: string | null = null;
+const colorPersona = (p: Persona) => espPersona(p.especialidad).c;
+const avatarStyle = (p: Persona) => { const f = fotoDe(p); return f ? `background-image:url('${f}')` : ''; };
+const centroHab = (num: string): [number, number, number] | null => {
+  const h = stage?.habitaciones.find((x) => x.numero === num); if (!h) return null;
+  const n = h.contorno.length; return [h.contorno.reduce((a, q) => a + q[0], 0) / n, 3.1, h.contorno.reduce((a, q) => a + q[1], 0) / n];
+};
+function dibujarGente(): void {
+  if (!stage || !ui) return;
+  if (!gente || !gente.isConnected) { gente = document.createElement('div'); gente.className = 'nv-gente'; ui.parentElement?.insertBefore(gente, ui); gente.addEventListener('click', (ev) => { const b = (ev.target as HTMLElement).closest<HTMLElement>('[data-per]'); if (b) { personaSel = b.dataset.per!; sel = null; render(); } }); }
+  const grupos = stage.habitaciones.map((h) => ({ num: h.numero, gente: enHabitacion(h.numero), c: centroHab(h.numero) })).filter((g) => g.gente.length && g.c);
+  const f = grupos.map((g) => g.num + ':' + g.gente.map((x) => x.p.id + x.estado + (fotoDe(x.p) ? 1 : 0)).join(',')).join('|') + '#' + personaSel;
+  if (f !== firmaGente) {
+    firmaGente = f;
+    gente.innerHTML = grupos.map((g) => {
+      const vis = g.gente.slice(0, 4), resto = g.gente.length - vis.length;
+      return vis.map(({ p, estado }) => `<button class="nv-per ${estado} ${p.id === personaSel ? 'on' : ''}" data-per="${p.id}" data-hab="${g.num}" style="--ring:${colorPersona(p)}" title="${esc(p.nombre)} · ${esc(espPersona(p.especialidad).n)} · ${estado === 'dentro' ? 'en la habitación (check-in hoy)' : 'asignado'}"><span class="av" style="${avatarStyle(p)}">${fotoDe(p) ? '' : esc(iniciales(p.nombre))}</span>${estado === 'dentro' ? '<span class="ok"></span>' : ''}<span class="lb">${espPersona(p.especialidad).corto}</span><span class="nm">${esc(p.nombre.split(' ')[0])}</span></button>`).join('')
+        + (resto > 0 ? `<span class="nv-per" data-hab="${g.num}" data-mas="1"><span class="nv-mas">+${resto}</span></span>` : '');
+    }).join('');
+  }
+  // posiciones: en rejilla bajo el número de la habitación
+  const offs: Record<string, number> = {};
+  gente.querySelectorAll<HTMLElement>('[data-hab]').forEach((el) => {
+    const num = el.dataset.hab!; const c = centroHab(num); if (!c) return;
+    const pr = stage!.proyectar(c); const k = offs[num] = (offs[num] ?? -1) + 1;
+    const n = Math.min(5, grupos.find((g) => g.num === num)?.gente.length ?? 1);
+    el.style.display = pr.visible ? '' : 'none';
+    el.style.transform = `translate(${pr.x + (k - (n - 1) / 2) * 40}px, ${pr.y + 36}px)`;
+  });
+}
+function caraHtml(p: Persona, estado: 'dentro' | 'asignado', extra = ''): string {
+  return `<button class="nv-cara ${estado}" data-nv="persona" data-v="${p.id}" style="--ring:${colorPersona(p)}"><i style="${avatarStyle(p)}">${fotoDe(p) ? '' : esc(iniciales(p.nombre))}</i>${esc(p.nombre.split(' ').slice(0, 2).join(' '))}<small>${esc(espPersona(p.especialidad).n)}${estado === 'dentro' ? ' · en obra' : ''}${extra}</small></button>`;
+}
+function uiEquipo(): string {
+  const todos = listaPersonal();
+  if (!todos.length) return '';
+  const ed = puedeEditar(perfil);
+  if (filtro.hab) {
+    const g = enHabitacion(filtro.hab);
+    const libres = todos.filter((p) => !g.some((x) => x.p.id === p.id));
+    return `<section class="nv-equipo"><span class="tw-lbl">Equipo · habitación ${esc(filtro.hab)}<em class="nv-st st-${g.some((x) => x.estado === 'dentro') ? 'resuelta' : 'cerrada'}">${g.filter((x) => x.estado === 'dentro').length} en obra</em></span>
+      <div class="nv-caras">${g.length ? g.map(({ p, estado }) => caraHtml(p, estado)).join('') : '<small class="tw-muted">Nadie asignado ni con check-in hoy.</small>'}</div>
+      ${ed ? `<select data-nvf="asignar" data-hab="${esc(filtro.hab)}"><option value="">+ Asignar persona a la ${esc(filtro.hab)}…</option>${libres.map((p) => `<option value="${p.id}">${esc(p.nombre)} · ${esc(p.area || 'sin área')}</option>`).join('')}</select>` : ''}</section>`;
+  }
+  const dentro = todos.filter((p) => dentroAhora(p.id)).length;
+  const asig = todos.filter((p) => !dentroAhora(p.id) && habitacionesDe(p.id).length).length;
+  const libres = sinUbicar();
+  return `<section class="nv-equipo"><span class="tw-lbl">Equipo en obra hoy</span>
+    <div class="nv-leyenda">${Object.values(ESP_PERSONA).filter((e) => todos.some((p) => espPersona(p.especialidad).n === e.n)).map((e) => `<span><i style="background:${e.c}"></i>${e.n}</span>`).join('')}</div>
+    <div class="nv-leyenda"><span><i style="background:#1E9A62"></i>${dentro} con check-in</span><span><i style="background:#B8C0C8"></i>${asig} asignados</span><span><i style="background:#E5E8EC;border:1px solid #B8C0C8"></i>${libres.length} sin ubicar</span></div>
+    ${libres.length ? `<div class="nv-caras">${libres.slice(0, 8).map((p) => caraHtml(p, 'asignado')).join('')}${libres.length > 8 ? `<small class="tw-muted">+${libres.length - 8} más</small>` : ''}</div>` : ''}
+    <small class="tw-muted">Toca una habitación para ver su equipo${puedeEditar(perfil) ? ' y asignar personas' : ''}. El check-in se hace con el QR de cada habitación.</small></section>`;
+}
+function uiPersona(): string {
+  const p = listaPersonal().find((x) => x.id === personaSel); if (!p) return '';
+  const hab = dentroAhora(p.id); const asigs = habitacionesDe(p.id); const ed = puedeEditar(perfil);
+  const habs = stage?.habitaciones.map((h) => h.numero) ?? [];
+  return `<aside class="tw-card tw-panel nv-det">
+    <div class="tw-phead"><div><span class="tw-over">Equipo de obra</span></div><button class="tw-ico sm" data-nv="cerrarPersona" aria-label="Cerrar">${ic('x')}</button></div>
+    <div class="nv-perfil"><span class="foto" style="${avatarStyle(p)}">${fotoDe(p) ? '' : esc(iniciales(p.nombre))}</span><div><h3>${esc(p.nombre)}</h3><p class="tw-muted" style="margin:0">${esc(p.area || 'Área sin registrar en el listado')}</p></div></div>
+    <dl class="tw-dl">
+      <div><dt>Especialidad</dt><dd><span class="tw-chip"><i style="background:${colorPersona(p)}"></i>${esc(espPersona(p.especialidad).n)}</span></dd></div>
+      <div><dt>Contratista</dt><dd>${esc(p.contratista || '—')}</dd></div>
+      <div><dt>Ahora</dt><dd>${hab ? `<b style="color:#16774B">En la habitación ${esc(hab)}</b> (check-in de hoy)` : '<span class="tw-muted">Sin check-in hoy</span>'}</dd></div>
+      <div><dt>Asignado a</dt><dd>${asigs.length ? asigs.map((h) => `Hab. ${esc(h)}${ed ? ` <button class="tw-btn ghost" style="padding:0 4px;font-size:11px" data-nv="quitarAsig" data-v="${p.id}|${esc(h)}">quitar</button>` : ''}`).join(' · ') : '—'}</dd></div>
+    </dl>
+    ${ed ? `<select class="nv-equipo" data-nvf="asignar" data-pid="${p.id}"><option value="">+ Asignar a una habitación…</option>${habs.filter((h) => !asigs.includes(h)).map((h) => `<option value="${h}">Habitación ${h}</option>`).join('')}</select>` : ''}
+  </aside>`;
+}
+
 function loop(): void {
   if (!activo) return;
   raf = requestAnimationFrame(loop);
   if (!stage || !ui) return;
+  dibujarGente();
   if (!pins || !pins.isConnected) { pins = document.createElement('div'); pins.className = 'nv-pins'; ui.parentElement?.insertBefore(pins, ui); pins.addEventListener('click', onPin); }
   const lista = filtradas().filter((n) => n.pos);
   const pts = lista.map((n) => ({ n, p: stage!.proyectar(n.pos!) })).filter((x) => x.p.visible);
@@ -143,7 +218,6 @@ export function render(): void {
   const todas = novedades(); const lista = filtradas();
   const habs = [...new Set(stage?.habitaciones.map((h) => h.numero) ?? [])];
   const resps = [...new Set(todas.map((n) => n.responsable).filter(Boolean))] as string[];
-  const vista3d = stage?.vista3d ?? false;
   ui.innerHTML = `
   <aside class="tw-card nv-side">
     <div class="nv-head"><div><span class="tw-over">Novedades · Piso 2</span><h2>${lista.length} <small>de ${todas.length}</small></h2></div>
@@ -155,6 +229,7 @@ export function render(): void {
       <select data-nvf="hab"><option value="">Habitación</option>${habs.map((h) => `<option value="${h}" ${filtro.hab === h ? 'selected' : ''}>${h}</option>`).join('')}</select>
       <select data-nvf="resp"><option value="">Responsable</option>${resps.map((r) => `<option ${filtro.resp === r ? 'selected' : ''}>${esc(r)}</option>`).join('')}</select>
     </div>
+    ${uiEquipo()}
     <div class="nv-list">${!lista.length ? `<p class="tw-muted nv-empty">${todas.length ? 'Ninguna novedad cumple los filtros.' : 'Aún no hay novedades registradas en el piso 2. Usa “Nueva novedad” y toca el punto en el modelo.'}</p>` :
       lista.map((n) => `<button class="nv-row ${n.id === sel ? 'on' : ''}" data-nv="sel" data-v="${n.id}">
         <i style="background:${TIPO_COL[n.tipo]}"></i>
@@ -162,10 +237,9 @@ export function render(): void {
         <em class="nv-st st-${n.estado}">${ESTADO_TXT[n.estado]}</em></button>`).join('')}</div>
   </aside>
   <div class="nv-tools">
-    <div class="tw-seg nv-vista"><button data-nv="vista" data-v="planta" aria-pressed="${!vista3d}">Planta</button><button data-nv="vista" data-v="3d" aria-pressed="${vista3d}">3D</button></div>
     <button class="tw-ico" data-nv="encuadrar" title="Encuadrar">${ic('area')}</button>
   </div>
-  ${creando ? uiCrear() : `<aside class="tw-card tw-panel nv-det" id="nvDet" ${sel ? '' : 'hidden'}></aside>`}
+  ${personaSel ? uiPersona() : creando ? uiCrear() : `<aside class="tw-card tw-panel nv-det" id="nvDet" ${sel ? '' : 'hidden'}></aside>`}
   ${uiTimeline()}`;
   if (sel && !creando) { const n = novedades().find((x) => x.id === sel); if (n) void pintarDetalle(n); }
 }
@@ -274,7 +348,9 @@ export async function onClickNov(ev: Event): Promise<boolean> {
     case 'tipo': filtro.tipos.has(v as TipoNov) ? filtro.tipos.delete(v as TipoNov) : filtro.tipos.add(v as TipoNov); render(); break;
     case 'sel': void seleccionar(v === sel ? null : v); break;
     case 'cerrarDet': void seleccionar(null); break;
-    case 'vista': await stage?.setVista3D(v === '3d'); render(); break;
+    case 'persona': personaSel = v; sel = null; render(); break;
+    case 'cerrarPersona': personaSel = null; render(); break;
+    case 'quitarAsig': { const [pid, hab] = v.split('|'); toast((await quitarAsignacion(pid, hab)) ?? 'Asignación retirada'); break; }
     case 'encuadrar': stage?.encuadrar(); break;
     case 'periodo': filtro.periodo = v as Periodo; render(); break;
     case 'dia': filtro.periodo = 'dia'; filtro.fecha = v; render(); break;
@@ -288,6 +364,7 @@ export async function onChangeNov(ev: Event): Promise<boolean> {
   else if (k === 'esp') filtro.esp = t.value;
   else if (k === 'hab') { filtro.hab = t.value; if (t.value) stage?.resaltarHabitacion(t.value); }
   else if (k === 'resp') filtro.resp = t.value;
+  else if (k === 'asignar' && t.value) { const hab = t.dataset.hab || filtro.hab; const pid = t.dataset.pid || t.value; const h2 = t.dataset.pid ? t.value : hab; toast((await asignar(pid, h2)) ?? 'Persona asignada a la habitación ' + h2); return true; }
   else if (k === 'fecha') { if (!t.value) return true; filtro.fecha = t.value; if (filtro.periodo === 'todo') filtro.periodo = 'dia'; }
   else if (k === 'habSolo' && creando && t.value) { creando = { paso: 'form', pos: null, hab: t.value, cat: null }; stage?.elegirPunto(null); stage?.resaltarHabitacion(t.value); const c = stage?.centroHabitacion(t.value); if (c) creando.pos = [+c.x.toFixed(3), +(c.y).toFixed(3), +c.z.toFixed(3)]; }
   else if (k === 'adjuntar') {
