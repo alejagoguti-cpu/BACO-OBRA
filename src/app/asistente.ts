@@ -78,7 +78,8 @@ export function motorLocal(q: string): Pick<Turno, 'respuesta' | 'registros'> {
   }
   if (/m[aá]s atrasad/.test(s)) {
     const filas = ESP.filter(([, , , o]) => o.length).map(([, id, n, o]) => { const g = agregar(actividades().filter((a) => o.includes(a.esp)), hoy); return { id, n, g, d: g.real - g.prog }; }).sort((a, b) => a.d - b.d);
-    const f = filas[0];
+    const f = filas[0]; const emp = filas.filter((x) => Math.abs(x.d - f.d) < 0.0005);
+    if (emp.length > 1) return { respuesta: `Empatan como más atrasadas ${emp.map((x) => x.n).join(', ')}: real ${pct(f.g.real)} frente a ${pct(f.g.prog)} programado (diferencia ${pct(f.d)}).\nResto: ${filas.slice(emp.length).map((x) => `${x.n} ${pct(x.d)}`).join(', ') || '—'}.\nSin datos de cronograma: Estructura, Desagües, Contra incendios, HVAC, Interiorismo.`, registros: [] };
     return { respuesta: `La especialidad más atrasada es ${f.n}: real ${pct(f.g.real)} frente a ${pct(f.g.prog)} programado (diferencia ${pct(f.d)}).\nResto: ${filas.slice(1).map((x) => `${x.n} ${pct(x.d)}`).join(', ')}.\nSin datos de cronograma: Estructura, Desagües, Contra incendios, HVAC, Interiorismo.`, registros: [] };
   }
   if (/avance|progreso/.test(s)) {
