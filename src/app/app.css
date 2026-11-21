@@ -803,3 +803,12 @@ body[data-modo="pais"] .dock,body[data-modo="pais"] #hint,body[data-modo="pais"]
 #app .cc-hotel[aria-pressed="true"]{background:rgba(14,48,100,.08)}
 #app .cc-back{padding:6px 8px;font-size:12.5px;font-weight:700;color:var(--muted);align-self:flex-start;margin-bottom:4px}
 #app .cc-back .ic{width:15px;height:15px}
+
+#app .fontana-card{width:min(360px,calc(100vw - 32px))}
+#app .tp-hint{display:flex;gap:8px;align-items:flex-start;font-size:12.5px;color:var(--ink2);background:rgba(183,158,102,.12);border-radius:10px;padding:9px 10px;margin:8px 0}
+#app .tp-hint .ic{width:16px;height:16px;flex:none;margin-top:1px;color:#8C6F3A}
+#app .tp-niveles{display:flex;flex-direction:column;gap:3px;margin:8px 0;max-height:46vh;overflow:auto}
+#app .tp-nivel{all:unset;box-sizing:border-box;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 11px;border-radius:10px;border:1px solid var(--line)}
+#app .tp-nivel b{font-size:13.5px}#app .tp-nivel small{font-size:11.5px;color:var(--muted)}
+#app .tp-nivel.p2{border-color:#B79E66}#app .tp-nivel.p2 small{color:#8C6F3A;font-weight:700}
+#app .tp-nivel.on,#app .tp-nivel:hover{background:rgba(232,180,74,.18);border-color:#E8B44A}

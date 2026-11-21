@@ -59,7 +59,7 @@ function asegurarStage(): Stage {
   stage = crearStage($('#twStage')!);
   stage.onModo = (m: Modo) => {
     if (m === 'planta' && ruta.v === 'bim') { history.replaceState(null, '', '#fontana/piso-2'); ruta = { v: 'planta' }; dispatchEvent(new CustomEvent('twin:ruta')); }
-    if (m === 'edificio' && ruta.v !== 'edificio') { history.replaceState(null, '', '#fontana'); ruta = { v: 'edificio' }; dispatchEvent(new CustomEvent('twin:ruta')); }
+    if (m === 'edificio' && ruta.v !== 'edificio') { history.replaceState(null, '', '#hoteles/la-fontana'); ruta = { v: 'edificio' }; dispatchEvent(new CustomEvent('twin:ruta')); }
     render();
   };
   stage.onEdificio = (s) => { edificioSel = s; informarUbicacion({ vista: 'Hotel La Fontana', lugar: s ? 'Torre Suites' : '', elemento: '' }); render(); };
@@ -102,9 +102,10 @@ export async function abrirWorkspace(r: RutaTwin): Promise<void> {
     informarUbicacion({ vista: 'BIM · Torre Suites', lugar: '', elemento: '' });
     if (s.modo === 'edificio') s.verBim();
   } else if (r.v === 'planta') {
+    let directo = false; try { directo = sessionStorage.getItem('twin-directo') === '1'; sessionStorage.removeItem('twin-directo'); } catch { /* */ }
     if (s.modo === 'edificio') {
-      // llegada directa (recarga o enlace): se anima igual, no se salta la explosión
-      s.verBim();
+      // desde la torre explotada en el sitio 3D se entra directo a la planta; si no, se anima la explosión
+      if (directo) s.irAPlantaDirecto(); else s.verBim();
     }
     if (r.hab !== habSel) s.seleccionarHabitacion(r.hab ?? null);
     informarUbicacion({ vista: 'Piso 2', lugar: r.hab ? 'HAB-' + r.hab : '', elemento: '' });
@@ -357,7 +358,7 @@ async function onClick(ev: Event): Promise<void> {
     case 'verBim': location.hash = '#fontana/bim'; return;
     case 'deselEd': s?.seleccionarEdificio(false); return;
     case 'encuadrar': s?.encuadrar(); return;
-    case 'tlVolver': location.hash = '#fontana'; return;
+    case 'tlVolver': location.hash = '#hoteles/la-fontana'; return;
     case 'tlPlay': if (!s) return; if (s.tl.isActive()) s.tl.pause(); else { if (s.modo === 'planta') return; s.tl.timeScale(1); if (s.tl.progress() >= 1) s.tl.restart(); else s.tl.play(); } render(); return;
     case 'tlReverse': if (!s) return; if (s.modo === 'planta') { s.volverAEdificio(); return; } s.tl.timeScale(1.4).reverse(); render(); return;
     case 'tlRestart': if (!s) return; if (s.modo === 'planta') { s.volverAEdificio(); setTimeout(() => { location.hash = '#fontana/bim'; }, 300); return; } s.tl.timeScale(1).restart(); render(); return;
@@ -405,7 +406,7 @@ async function onSubmit(ev: Event): Promise<void> {
 
 /** migas de pan para la cabecera (app.ts) */
 export function migas(): [string, string][] {
-  const m: [string, string][] = [['Hoteles', '#mapa'], ['Bogotá', '#hoteles/bogota'], ['La Fontana', '#hoteles/la-fontana'], ['Torre Suites', '#fontana']];
+  const m: [string, string][] = [['Hoteles', '#mapa'], ['Bogotá', '#hoteles/bogota'], ['La Fontana', '#hoteles/la-fontana']];
   if (ruta.v === 'novedades') m.push(['Piso 2', '#fontana/piso-2'], ['Novedades', '#novedades']);
   if (ruta.v === 'bim') m.push(['BIM', '#fontana/bim']);
   if (ruta.v === 'planta' || ruta.v === 'gemelo') m.push(['BIM', '#fontana/bim'], ['Piso 2', '#fontana/piso-2']);

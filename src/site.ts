@@ -62,6 +62,8 @@ export interface Site {
   /** oculta solo los bloques (ids de edificios) que reemplaza el modelo de Revit; [] = ninguno */
   setRevitBlocks(ids: number[], extra?: [number, number][][]): void;
   buildingAt(world: Cesium.Cartesian3): Building | null;
+  /** 0 = normal, 1 = contexto opaco/atenuado (la torre en remodelación queda protagonista) */
+  setAtenuado(v: number): void;
 }
 
 const TREE_LABEL: Record<string, string> = {
@@ -320,6 +322,15 @@ export async function loadSite(
   let hazeStart = 1200;
 
   const state = { total: queue.length, loaded: 0, failed: [] as string[] };
+  const todos: { model: Cesium.Model; suelo: boolean }[] = [];
+  let atenuado = 0;
+  const gris = Cesium.Color.fromCssColorString('#d9d4cb');
+  const atenuar = (m: Cesium.Model, suelo: boolean) => {
+    const a = atenuado;
+    m.color = a > 0 ? gris.withAlpha(suelo ? 1 : 1 - 0.55 * a) : Cesium.Color.WHITE;
+    m.colorBlendMode = Cesium.ColorBlendMode.MIX;
+    m.colorBlendAmount = a * (suelo ? 0.35 : 0.7);
+  };
 
   const loadOne = async (s: SectionInfo): Promise<void> => {
     try {
@@ -352,6 +363,8 @@ export async function loadSite(
           ? new Cesium.Cartesian2(0.85, 0.55)
           : new Cesium.Cartesian2(0.68, 0.38);
       scene.primitives.add(model);
+      todos.push({ model, suelo: s.kind === 'suelo' });
+      if (atenuado > 0) atenuar(model, s.kind === 'suelo');
       if (s.kind === 'arboles') treeModels.push(model);
       if (s.key === 'Hotel' || s.key === 'hotel_cubiertas') hotelModels.push(model);
       await new Promise<void>((resolve) => {
@@ -492,6 +505,7 @@ export async function loadSite(
       }
       fShader.setUniform('uHotelPisos', n);
     },
+    setAtenuado(v: number) { atenuado = v; for (const t of todos) atenuar(t.model, t.suelo); },
     setTreesVisible(v: boolean) {
       for (const m of treeModels) m.show = v;
     },

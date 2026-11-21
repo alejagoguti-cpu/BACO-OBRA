@@ -19,7 +19,7 @@ import { filtro as filtroNovUI } from '../twin/nov-ui';
 import { iniciarNovedades, alCambiarNovedades, detenerNovedades } from './novedades';
 import { montarWorkspace, abrirWorkspace, ocultarWorkspace, parseRuta, migas } from '../twin/workspace';
 
-interface HLFApi { entrar(): Promise<void>; vistaColombia(d?: number): void; volarA(lon: number, lat: number, alt?: number, dur?: number): void; viewer: { useDefaultRenderLoop: boolean }; readonly modo: 'pais' | 'sitio'; piso2(): void; completo(): void }
+interface HLFApi { precargar(): void; explotar(): void; recomponer(): void; readonly explotado: boolean; entrar(): Promise<void>; vistaColombia(d?: number): void; volarA(lon: number, lat: number, alt?: number, dur?: number): void; viewer: { useDefaultRenderLoop: boolean }; readonly modo: 'pais' | 'sitio'; piso2(): void; completo(): void }
 const W = window as unknown as { HLF?: HLFApi };
 
 const app = document.getElementById('app')!;
@@ -78,6 +78,7 @@ function cargarMapa(): Promise<HLFApi> {
     const hlf = W.HLF!;
     pines = crearPinesEstelar(hlf.viewer as never, (id) => seleccionarHotel(id));
     document.getElementById('mapLoading')?.remove();
+    setTimeout(() => hlf.precargar(), 5500);
     return hlf;
   })();
   return mapa;
@@ -243,7 +244,7 @@ function pintarWho(): void {
 function renderChrome(): void {
   const sec = seccionDe(route);
   const ab = listaNovedades().filter((n) => n.estado !== 'Cerrada').length;
-  const href = (k: string) => k === 'bim' ? 'bim-' + (S.espUser || 'arq') : k;
+  const href = (k: string) => k === 'bim' ? 'bim-' + (S.espUser || 'arq') : k === 'fontana' ? 'hoteles/la-fontana' : k;
   $('rail').innerHTML = `<button class="logo" data-act="salir" title="${esc(perfil?.nombre ?? '')} · Cerrar sesión"><img src="logos/baco.png" alt="BACO"></button>`
     + NAV_SEC.flatMap(([, ks]) => ks).map((k) => { const n = NAV.find((x) => x[0] === k); if (!n) return ''; return `<a href="#${href(k)}" ${sec === k ? 'aria-current="page"' : ''} aria-label="${n[1]}">${ic(n[2])}<span class="lbl">${n[1]}</span><span class="rtx">${n[1].split(' ')[0]}</span>${k === 'novedades' && ab ? `<span class="dot">${ab}</span>` : ''}</a>`; }).join('');
   const m = migasActuales();
@@ -258,6 +259,30 @@ function renderChrome(): void {
   pintarWho();
   if (!parseRuta(route)) informarUbicacion({ vista: NAV.find((x) => x[0] === sec)?.[1] ?? 'Hoteles', lugar: '', elemento: '' });
 }
+
+/* ---------------- tarjeta de La Fontana (escena 3D del sitio) ---------------- */
+let torreNiveles: { i: number; nombre: string }[] | null = null; let nivelSel = -1;
+function vFontanaCard(): string {
+  const fon = HOTELES.find((x) => x.id === 'fontana')!;
+  if (torreNiveles) return `<aside class="hcard glass fontana-card"><p class="map-eyebrow">TORRE SUITES · AXONOMETRÍA POR PISOS</p><h2 style="font-size:22px;font-weight:800;margin:2px 0">Torre en remodelación</h2>
+    <p class="muted" style="font-size:12.5px">Pasa el cursor por cada piso para resaltarlo. El piso 2 tiene planta y habitaciones.</p>
+    <div class="tp-niveles">${[...torreNiveles].reverse().map((n) => `<button class="tp-nivel ${n.i === 1 ? 'p2' : ''} ${n.i === nivelSel ? 'on' : ''}" data-act="torreNivel" data-v="${n.i}"><b>${esc(n.nombre)}</b><small>${n.i === 1 ? 'Ver planta y habitaciones →' : 'Sin planta de detalle aún'}</small></button>`).join('')}</div>
+    <button class="btn block" data-act="torreRecomponer">${ic('reset', 1.8)} Recomponer edificio</button></aside>`;
+  return `<aside class="hcard glass fontana-card"><p class="map-eyebrow">BOGOTÁ · USAQUÉN</p><h2 style="font-size:24px;font-weight:800;margin:2px 0">Hotel Estelar La Fontana</h2><p class="muted" style="font-size:13.5px">${esc(fon.dir)}</p>
+    <p class="tp-hint">${ic('tap', 1.8)}<span>Pasa el cursor sobre la <b>Torre Suites</b>: se ilumina y el resto queda en segundo plano. Haz clic para separarla por pisos.</span></p>
+    <button class="btn coral block cta" data-act="torreExplotar">${ic('layers', 2)} Separar por pisos</button>
+    <button class="btn block" data-act="torreNivel" data-v="1">${ic('plan', 2)} Planta del piso 2 y habitaciones</button></aside>`;
+}
+addEventListener('hlf:explotado', (e) => { torreNiveles = (e as CustomEvent).detail; nivelSel = -1; if (route === 'hoteles/la-fontana') renderOvFontana(); });
+addEventListener('hlf:recompuesto', () => { torreNiveles = null; nivelSel = -1; if (route === 'hoteles/la-fontana') renderOvFontana(); });
+addEventListener('hlf:nivel', (e) => { nivelSel = (e as CustomEvent).detail; document.querySelectorAll<HTMLElement>('.tp-nivel').forEach((b) => b.classList.toggle('on', +b.dataset.v! === nivelSel)); });
+addEventListener('hlf:entrarNivel', (e) => entrarNivel((e as CustomEvent).detail));
+function entrarNivel(i: number): void {
+  if (i !== 1) { toast('Por ahora solo el piso 2 tiene planta y habitaciones en el gemelo'); return; }
+  try { sessionStorage.setItem('twin-directo', '1'); } catch { /* */ }
+  location.hash = 'fontana/piso-2';
+}
+function renderOvFontana(): void { const c = document.querySelector('.fontana-card'); if (c) c.outerHTML = vFontanaCard(); }
 
 /* ---------------- capa sobre el mapa ---------------- */
 function renderOv(): void {
@@ -560,6 +585,7 @@ async function go(): Promise<void> {
     return;
   }
   // área espacial del gemelo (#fontana…): la sidebar sigue visible
+  if (h === 'fontana') { history.replaceState(null, '', '#hoteles/la-fontana'); route = 'hoteles/la-fontana'; return go(); }
   const rt = parseRuta(h);
   if (rt) {
     $('rail').hidden = false; $('topbar').hidden = false;
@@ -578,10 +604,10 @@ async function go(): Promise<void> {
     $('rail').hidden = false; $('topbar').hidden = false; $('page').innerHTML = ''; $('page').className = ''; bim?.cerrar(); $('bim').hidden = true;
     renderChrome();
     const bog = HOTELES.filter((x) => x.ciudad === 'Bogotá');
-    const fon = HOTELES.find((x) => x.id === 'fontana')!;
+
     $('ov').innerHTML = h === 'hoteles/bogota'
       ? `<aside class="mapcard"><div class="glass hlist" style="max-height:none"><p class="map-eyebrow">BOGOTÁ · ${bog.length} HOTELES</p>${bog.map((x) => `<button class="hrow ${x.obra ? 'obra' : ''}" data-act="hotel" data-v="${x.id}"><span class="pin">${ic(x.obra ? 'build' : 'pin', 2)}</span><span><b>${esc(x.nombre)}</b><small>${esc(x.dir)}${x.obra ? '' : ' · ubicación aproximada'}</small></span></button>`).join('')}</div></aside>`
-      : `<aside class="hcard glass fontana-card"><p class="map-eyebrow">BOGOTÁ · USAQUÉN</p><h2 style="font-size:24px;font-weight:800;margin:2px 0">Hotel Estelar La Fontana</h2><p class="muted" style="font-size:13.5px">${esc(fon.dir)}</p><p class="muted" style="font-size:12.5px">Modelo Revit de la Torre Suites georreferenciado sobre el sitio.</p><a class="btn coral block cta" href="#fontana">${ic('cube', 2)} Explorar gemelo digital <span class="go">${ic('arrowR', 2.2)}</span></a></aside>`;
+      : vFontanaCard();
     const hlf = await cargarMapa(); pausarMapa(false);
     if (route !== h) return;
     if (h === 'hoteles/bogota') { pines?.show(true); hlf.volarA(-74.06, 4.66, 42000, 2.8); }
@@ -641,6 +667,9 @@ app.addEventListener('click', async (ev) => {
     case 'piso2': piso2Open = !piso2Open; W.HLF?.piso2(); renderOv(); return;
     case 'completo': piso2Open = false; W.HLF?.completo(); renderOv(); return;
     case 'irRuta': location.hash = v; return;
+    case 'torreExplotar': W.HLF?.explotar(); return;
+    case 'torreRecomponer': W.HLF?.recomponer(); return;
+    case 'torreNivel': entrarNivel(+v); return;
     case 'mapCiudad': { const h = await cargarMapa(); enRecorrido = false; ciudadCine = null; hotelSel = null; ciudadSel = v || null; h.vistaColombia(0); if (v) est?.volarCiudad(h.viewer as never, v); else est?.verTodos(h.viewer as never); renderOv(); return; }
     case 'mapHotel': { if (v === 'fontana') { location.hash = 'hoteles/la-fontana'; return; } const h = await cargarMapa(); est?.detenerCine(h.viewer as never); hotelSel = v; const x = HOTELES.find((q) => q.id === v)!; h.volarA(x.lon, x.lat, 5000); renderOv(); return; }
     case 'mapTodos': { const h = await cargarMapa(); ciudadSel = null; enRecorrido = false; ciudadCine = null; hotelSel = null; h.vistaColombia(0); est?.verTodos(h.viewer as never); renderOv(); return; }

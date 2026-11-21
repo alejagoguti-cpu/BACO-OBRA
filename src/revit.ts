@@ -38,6 +38,15 @@ export interface RevitHotel {
   hide(): void;
   setNight(n: number): void;
   update(dt: number, now: number): void;
+  /** brillo dorado de la torre (0–1) */
+  setHighlight(v: number): void;
+  /** axonometría explotada: los niveles se separan en altura */
+  explode(): void;
+  readonly explotado: boolean;
+  /** índice del nivel al que pertenece un primitivo de Cesium (-1 si no es de la torre) */
+  nivelDe(prim: unknown): number;
+  /** resalta un nivel (en la vista explotada) */
+  marcarNivel(i: number): void;
 }
 
 /** Decodifica una imagen a píxeles; si no llega (red o memoria), devuelve un color plano: el visor nunca se detiene por una textura. */
@@ -70,6 +79,7 @@ function revitShader(ladrillo: Cesium.TextureUniform, teja: Cesium.TextureUnifor
   return new Cesium.CustomShader({
     uniforms: {
       uNight: { type: Cesium.UniformType.FLOAT, value: 0 },
+      uHl: { type: Cesium.UniformType.FLOAT, value: 0 },
       uLadrillo: { type: Cesium.UniformType.SAMPLER_2D, value: ladrillo },
       uTeja: { type: Cesium.UniformType.SAMPLER_2D, value: teja },
     },
@@ -195,8 +205,8 @@ function revitShader(ladrillo: Cesium.TextureUniform, teja: Cesium.TextureUnifor
         material.diffuse = col * mix(1.0, 0.4, uNight);
         material.roughness = rough;
         material.specular = spec;
-        material.emissive = col * 0.14 * (1.0 - uNight);
-        
+        material.emissive = col * 0.14 * (1.0 - uNight) + vec3(0.95, 0.70, 0.32) * uHl * 0.20;
+        material.diffuse *= 1.0 + 0.12 * uHl;
       }
     `,
   });
@@ -241,6 +251,8 @@ export async function loadRevitHotel(viewer: Cesium.Viewer, matrix: Cesium.Matri
     n.model.show = n.shown;
   };
   const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
+  const SEPARACION = 9; // m entre niveles en la vista explotada
+  let explotado = false;
 
   const api: RevitHotel = {
     niveles: niveles.map((n) => ({ i: n.i, nombre: n.nombre })),
@@ -285,6 +297,7 @@ export async function loadRevitHotel(viewer: Cesium.Viewer, matrix: Cesium.Matri
     full() {
       api.visible = true;
       api.abierto = -1;
+      explotado = false;
       const now = performance.now();
       let k = 0;
       for (const n of niveles) {
@@ -303,6 +316,24 @@ export async function loadRevitHotel(viewer: Cesium.Viewer, matrix: Cesium.Matri
     },
     setNight(v: number) {
       shader.setUniform('uNight', v);
+    },
+    setHighlight(v: number) { shader.setUniform('uHl', v); },
+    get explotado() { return explotado; },
+    explode() {
+      api.visible = true; api.abierto = -1; explotado = true;
+      const now = performance.now();
+      for (const n of niveles) {
+        n.shown = true; place(n);
+        n.anim = { o0: n.off, o1: n.i * SEPARACION, start: now + n.i * 110, dur: 1300 };
+      }
+    },
+    nivelDe(prim: unknown) { return niveles.find((n) => n.model === prim)?.i ?? -1; },
+    marcarNivel(i: number) {
+      for (const n of niveles) {
+        n.model.color = n.i === i ? Cesium.Color.fromCssColorString('#E8B44A') : Cesium.Color.WHITE;
+        n.model.colorBlendMode = Cesium.ColorBlendMode.MIX;
+        n.model.colorBlendAmount = n.i === i ? 0.35 : 0;
+      }
     },
     update(_dt: number, now: number) {
       if (!api.visible) return;

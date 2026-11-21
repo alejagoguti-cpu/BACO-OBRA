@@ -372,8 +372,10 @@ let revit: RevitHotel | null = null;
 let pisosPanel: { show(v: boolean): void; mark(i: number): void } | null = null;
 let revitPending = false;
 let autoPlayed = false;
+let autoPendiente = false;
 /** Al levantarse el telón de carga: la cámara vuela suavemente al hotel y el modelo se arma piso por piso. */
 async function autoPlayHotel(): Promise<void> {
+  if (modo !== 'sitio') { autoPendiente = true; return; }
   if (autoPlayed) return;
   autoPlayed = true;
   await initRevit();
@@ -536,8 +538,44 @@ function select(b: Building | null): void {
   if (card) card.hidden = false;
 }
 
+let sobreTorre = false; let nivelHover = -1; let ultHover = 0;
+let hl = 0, hlObj = 0, aten = 0, atenObj = 0;
+function hoverTorre(e: PointerEvent): void {
+  if (modo !== 'sitio' || !revit?.visible || cam.isWalking || e.buttons) return;
+  const now = performance.now(); if (now - ultHover < 60) return; ultHover = now;
+  const r = container.getBoundingClientRect();
+  const p = scene.pick(new Cesium.Cartesian2(e.clientX - r.left, e.clientY - r.top)) as { primitive?: unknown } | undefined;
+  const i = revit.nivelDe(p?.primitive);
+  sobreTorre = i >= 0;
+  if (revit.explotado) { if (i !== nivelHover) { nivelHover = i; revit.marcarNivel(i); window.dispatchEvent(new CustomEvent('hlf:nivel', { detail: i })); } }
+  hlObj = sobreTorre || revit.explotado ? 1 : 0; atenObj = sobreTorre || revit.explotado ? 1 : 0;
+  container.style.cursor = sobreTorre ? 'pointer' : '';
+}
+container.addEventListener('pointermove', hoverTorre);
+container.addEventListener('pointerleave', () => { if (!revit?.explotado) { sobreTorre = false; hlObj = 0; atenObj = 0; } });
+scene.preRender.addEventListener(() => {
+  if (Math.abs(hl - hlObj) > 0.005) { hl += (hlObj - hl) * 0.14; revit?.setHighlight(hl); }
+  if (Math.abs(aten - atenObj) > 0.005) { aten += (atenObj - aten) * 0.12; site?.setAtenuado(aten < 0.01 ? 0 : aten); }
+});
+/** clic sobre la torre: axonometría explotada por piso (o, ya explotada, entrar al piso tocado) */
+function explotarTorre(): void {
+  if (!revit) return;
+  stopOrbit(); select(null);
+  revit.explode(); hlObj = 1; atenObj = 1;
+  const c = revit.caja;
+  cam.flyTo({ pivot: enuToWorld((c[0] + c[2]) / 2, (c[1] + c[3]) / 2, 38), heading: 0.55, pitch: -0.3, range: 330 }, 2.2);
+  window.dispatchEvent(new CustomEvent('hlf:explotado', { detail: revit.niveles }));
+}
+function recomponerTorre(): void {
+  if (!revit) return;
+  revit.full(); revit.marcarNivel(-1); nivelHover = -1; hlObj = 0; atenObj = 0;
+  cam.flyTo({ pivot: HOTEL_PIVOT(), heading: 0.55, pitch: -0.42, range: 260 }, 2.0);
+  window.dispatchEvent(new CustomEvent('hlf:recompuesto'));
+}
 cam.onPick = (world) => {
   if (!site || modo !== 'sitio') return;
+  if (revit?.explotado) { if (nivelHover >= 0) window.dispatchEvent(new CustomEvent('hlf:entrarNivel', { detail: nivelHover })); return; }
+  if (sobreTorre && revit) { explotarTorre(); return; }
   select(world ? site.buildingAt(world) : null);
 };
 $('cardClose')?.addEventListener('click', () => select(null));
@@ -662,6 +700,7 @@ function activarSitio(): void {
   cam.active = true;
   cam.flyTo({ pivot: HOTEL_PIVOT(), heading: 0.55, pitch: -0.42, range: 260 }, 3.2);
   document.body.dataset.modo = 'sitio';
+  if (autoPendiente) { autoPendiente = false; setTimeout(() => void autoPlayHotel(), 1200); }
 }
 /** Entra a La Fontana: vuela de Colombia a Bogotá mientras carga la escena, luego la cámara arquitectónica toma el control. */
 async function entrar(): Promise<void> {
@@ -683,7 +722,10 @@ async function entrar(): Promise<void> {
   viewer.camera.flyToBoundingSphere(new Cesium.BoundingSphere(HOTEL_PIVOT(), 1), { offset: off, duration: 0 });
   activarSitio();
 }
-(window as unknown as { HLF: unknown }).HLF = { entrar, vistaColombia, volarA, viewer, get modo() { return modo; }, piso2: () => void togglePiso2(), completo: () => verEdificioCompleto(2) };
+(window as unknown as { HLF: unknown }).HLF = { entrar, vistaColombia, volarA, viewer, get modo() { return modo; },
+  /** empieza a cargar el sitio y el Revit en segundo plano (sin mover la cámara ni mostrar la carga) */
+  precargar: () => { booting ??= boot().catch((e) => { console.warn('precarga', e); booting = null; }); },
+  explotar: () => explotarTorre(), recomponer: () => recomponerTorre(), get explotado() { return !!revit?.explotado; }, piso2: () => void togglePiso2(), completo: () => verEdificioCompleto(2) };
 modoPais();
 viewer.camera.setView({ destination: Cesium.Cartesian3.fromDegrees(-77.6, 3.4, 2600000), orientation: { heading: 0, pitch: Cesium.Math.toRadians(-82), roll: 0 } });
 loadingEl.hidden = true;
