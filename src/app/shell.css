@@ -254,3 +254,8 @@ body.con-sesion #app .rail{z-index:60}
 .ck-p{all:unset;box-sizing:border-box;cursor:pointer;display:flex;flex-direction:column;padding:12px 14px;border:1px solid #DAD5CB;border-radius:12px;background:#fff}
 .ck-p b{font-size:15px;color:#1B232C}.ck-p small{font-size:12px;color:#6C7680}
 .ck-p.in{border-color:#1E9A62;background:#E8F6EF}.ck-p.in small{color:#16774B;font-weight:700}
+/* franja bajo el riel: que no se vea lo que hay detrás (Cesium) en Modelo BIM y vistas de prototipo */
+body.con-sesion #bim::before,body.con-sesion #prototype .proto::before{content:'';position:fixed;top:0;bottom:0;left:0;width:var(--side-w);background:#ebe7e0;z-index:-1;pointer-events:none}
+:root[data-theme="dark"] body.con-sesion #bim::before,:root[data-theme="dark"] body.con-sesion #prototype .proto::before{background:#10161c}
+#app #bim .bimbar{align-items:stretch}
+#app #bim .bimtitle,#app #bim .bimpasos{min-height:58px;display:flex;align-items:center}

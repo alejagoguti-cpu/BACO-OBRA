@@ -161,7 +161,7 @@
 .nv-cluster b{position:absolute;left:-19px;top:-19px;width:38px;height:38px;border-radius:50%;background:#0E3064;color:#fff;display:grid;place-items:center;font:800 14px var(--f,sans-serif);box-shadow:0 0 0 3px rgba(255,255,255,.9),0 8px 18px -8px rgba(0,0,0,.6)}
 .nv-cluster span{position:absolute;left:-16px;top:21px;display:flex;gap:2px}
 .nv-cluster span i{width:8px;height:8px;border-radius:50%;box-shadow:0 0 0 1.5px #fff}
-.nv-side{left:calc(var(--side-w,0px) + 20px);top:calc(var(--top-h,72px) + 4px);bottom:212px;width:min(360px,calc(100% - 40px));display:flex;flex-direction:column;gap:10px;padding:14px}
+.nv-side{left:calc(var(--side-w,0px) + 20px);top:calc(var(--top-h,72px) + 4px);bottom:158px;width:min(360px,calc(100% - 40px));display:flex;flex-direction:column;gap:10px;padding:14px}
 .nv-head{display:flex;justify-content:space-between;align-items:flex-end;gap:10px}
 .nv-head h2{margin:2px 0 0;font-size:26px}
 .nv-head h2 small{font-size:13px;color:var(--tw-muted);font-weight:600}
@@ -188,7 +188,7 @@
 .nv-st.st-cerrada{background:rgba(108,118,128,.16);color:#58626C}
 .nv-tools{position:absolute;right:20px;top:calc(var(--top-h,72px) + 4px);display:flex;gap:8px;align-items:center}
 .nv-tools .tw-seg{margin:0;background:var(--tw-glass)}
-.nv-det,.nv-form-p{top:calc(var(--top-h,72px) + 56px);bottom:212px;max-height:none}
+.nv-det,.nv-form-p{top:calc(var(--top-h,72px) + 56px);bottom:158px;max-height:none}
 .nv-det[hidden]{display:none}
 .nv-form label{display:flex;flex-direction:column;gap:4px;font-size:11.5px;font-weight:600;color:var(--tw-muted)}
 .nv-2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
@@ -293,3 +293,24 @@
 .cf-mats i{width:58px;height:58px;box-shadow:0 4px 10px -6px rgba(0,0,0,.4)}
 .cf-mats span{font-size:10.5px;line-height:1.2;color:#3C4650;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 @media (max-width:900px){.cf-cat{top:auto;height:45%}.cf-mat{top:auto;height:50%}}
+
+/* ---------- personas agrupadas por habitación (planta de novedades) ---------- */
+.nv-pod{position:absolute;left:0;top:0;display:flex;align-items:center;pointer-events:auto;cursor:pointer;will-change:transform;padding:3px 7px 3px 4px;border-radius:999px;background:rgba(255,255,255,.94);box-shadow:0 6px 18px -8px rgba(14,48,100,.45),0 0 0 1px rgba(14,48,100,.08);white-space:nowrap}
+.nv-pod .nv-per{position:relative;width:24px;height:24px;margin-left:-6px}
+.nv-pod .nv-per:first-child{margin-left:0}
+.nv-pod .nv-per .av{left:0;top:0;width:24px;height:24px;font-size:8.5px;box-shadow:0 0 0 2px #fff,0 0 0 4px var(--ring)}
+.nv-pod .nv-per .lb,.nv-pod .nv-per .nm{display:none}
+.nv-pod .nv-per .ok{left:auto;right:-2px;top:-2px;width:8px;height:8px}
+.nv-pod .nv-mas{position:relative;left:auto;top:auto;width:24px;height:24px;margin-left:-6px;font-size:9.5px}
+.nv-podtx{margin-left:7px;font:700 10px var(--f,sans-serif);color:#0E3064}
+.nv-pod:hover{box-shadow:0 8px 22px -8px rgba(14,48,100,.6),0 0 0 1.5px #C9A96E}
+/* habitación abierta: cada persona con su foto, anillo de especialidad, etiqueta y nombre */
+.nv-pod.abierto{background:none;box-shadow:none;gap:12px;padding:0;cursor:default}
+.nv-pod.abierto .nv-per{width:40px;height:58px;margin:0}
+.nv-pod.abierto .nv-per .av{width:40px;height:40px;font-size:12px;box-shadow:0 0 0 2.5px #fff,0 0 0 5px var(--ring),0 8px 16px -6px rgba(0,0,0,.45)}
+.nv-pod.abierto .nv-per .lb{display:block;top:36px}
+.nv-pod.abierto .nv-per .nm{display:block;opacity:1;top:52px;background:rgba(255,255,255,.95);box-shadow:0 2px 6px -2px rgba(0,0,0,.25)}
+.nv-pod.abierto .nv-per .ok{width:11px;height:11px;right:-3px;top:-3px}
+/* línea de tiempo compacta */
+.nv-tl{height:128px;padding:8px 12px}
+.nv-day{padding:6px 8px;gap:3px}

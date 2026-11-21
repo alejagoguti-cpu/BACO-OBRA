@@ -55,14 +55,14 @@ export function activarNovedades(s: Stage, host: HTMLElement, sub: string[]): vo
     loop();
   }
   // subrutas: novedades/hab/216 · novedades/n/N-0001 · novedades/nueva/216
-  if (sub[0] === 'hab' && sub[1]) filtro.hab = sub[1];
+  if (sub[0] === 'hab' && sub[1]) { filtro.hab = sub[1]; margenFirma = ''; }
   if (sub[0] === 'n' && sub[1]) { const n = novedades().find((x) => x.codigo === sub[1]); if (n) void seleccionar(n.id); }
   if (sub[0] === 'nueva') { creando = { paso: 'ubicar', pos: null, hab: sub[1] ?? null, cat: null }; pedirPunto(); }
   informarUbicacion({ vista: 'Novedades · Piso 2', lugar: filtro.hab ? 'HAB-' + filtro.hab : '', elemento: '' });
   render();
 }
 export function desactivarNovedades(): void {
-  activo = false; cancelAnimationFrame(raf); quitarSub?.(); quitarSub = null;
+  activo = false; cancelAnimationFrame(raf); quitarSub?.(); quitarSub = null; stage?.setMargen(null); margenFirma = ''; ajustado = false;
   stage?.elegirPunto(null); creando = null;
   pins?.remove(); pins = null; gente?.remove(); gente = null; firmaGente = ''; personaSel = null;
 }
@@ -70,7 +70,7 @@ export const novedadesActivo = () => activo;
 /** clic en una habitación de la planta mientras el módulo está activo */
 export function habitacionTocada(num: string | null): void {
   if (creando?.paso === 'ubicar') return;
-  filtro.hab = num ?? ''; sel = null;
+  filtro.hab = num ?? ''; sel = null; margenFirma = '';
   navegar(num ? '#novedades/hab/' + num : '#novedades');
   informarUbicacion({ vista: 'Novedades · Piso 2', lugar: num ? 'HAB-' + num : '', elemento: '' });
   render();
@@ -87,25 +87,22 @@ const centroHab = (num: string): [number, number, number] | null => {
 };
 function dibujarGente(): void {
   if (!stage || !ui) return;
-  if (!gente || !gente.isConnected) { gente = document.createElement('div'); gente.className = 'nv-gente'; ui.parentElement?.insertBefore(gente, ui); gente.addEventListener('click', (ev) => { const b = (ev.target as HTMLElement).closest<HTMLElement>('[data-per]'); if (b) { personaSel = b.dataset.per!; sel = null; render(); } }); }
+  if (!gente || !gente.isConnected) { gente = document.createElement('div'); gente.className = 'nv-gente'; ui.parentElement?.insertBefore(gente, ui); gente.addEventListener('click', (ev) => { const t = ev.target as HTMLElement; const pod = t.closest<HTMLElement>('.nv-pod'); if (pod && !pod.classList.contains('abierto')) { habitacionTocada(pod.dataset.hab!); return; } const b = t.closest<HTMLElement>('[data-per]'); if (b) { personaSel = b.dataset.per!; sel = null; render(); } }); }
   const grupos = stage.habitaciones.map((h) => ({ num: h.numero, gente: enHabitacion(h.numero), c: centroHab(h.numero) })).filter((g) => g.gente.length && g.c);
-  const f = grupos.map((g) => g.num + ':' + g.gente.map((x) => x.p.id + x.estado + (fotoDe(x.p) ? 1 : 0)).join(',')).join('|') + '#' + personaSel;
+  const f = grupos.map((g) => g.num + ':' + g.gente.map((x) => x.p.id + x.estado + (fotoDe(x.p) ? 1 : 0)).join(',')).join('|') + '#' + personaSel + '#' + filtro.hab;
   if (f !== firmaGente) {
     firmaGente = f;
     gente.innerHTML = grupos.map((g) => {
-      const vis = g.gente.slice(0, 4), resto = g.gente.length - vis.length;
-      return vis.map(({ p, estado }) => `<button class="nv-per ${estado} ${p.id === personaSel ? 'on' : ''}" data-per="${p.id}" data-hab="${g.num}" style="--ring:${colorPersona(p)}" title="${esc(p.nombre)} · ${esc(espPersona(p.especialidad).n)} · ${estado === 'dentro' ? 'en la habitación (check-in hoy)' : 'asignado'}"><span class="av" style="${avatarStyle(p)}">${fotoDe(p) ? '' : esc(iniciales(p.nombre))}</span>${estado === 'dentro' ? '<span class="ok"></span>' : ''}<span class="lb">${espPersona(p.especialidad).corto}</span><span class="nm">${esc(p.nombre.split(' ')[0])}</span></button>`).join('')
-        + (resto > 0 ? `<span class="nv-per" data-hab="${g.num}" data-mas="1"><span class="nv-mas">+${resto}</span></span>` : '');
+      const abierto = g.num === filtro.hab; const vis = abierto ? g.gente : g.gente.slice(0, 3); const resto = g.gente.length - vis.length;
+      const dentro = g.gente.filter((x) => x.estado === 'dentro').length;
+      return `<div class="nv-pod ${abierto ? 'abierto' : ''}" data-hab="${g.num}">${vis.map(({ p, estado }) => `<button class="nv-per ${estado} ${p.id === personaSel ? 'on' : ''}" data-per="${p.id}" style="--ring:${colorPersona(p)}" title="${esc(p.nombre)} · ${esc(espPersona(p.especialidad).n)} · ${estado === 'dentro' ? 'en la habitación (check-in hoy)' : 'asignado'}"><span class="av" style="${avatarStyle(p)}">${fotoDe(p) ? '' : esc(iniciales(p.nombre))}</span>${estado === 'dentro' ? '<span class="ok"></span>' : ''}<span class="lb">${espPersona(p.especialidad).corto}</span>${abierto ? `<span class="nm">${esc(p.nombre.split(' ')[0])}</span>` : ''}</button>`).join('')}${resto > 0 ? `<span class="nv-mas">+${resto}</span>` : ''}${!abierto && dentro ? `<span class="nv-podtx">${dentro} en obra</span>` : ''}</div>`;
     }).join('');
   }
-  // posiciones: en rejilla bajo el número de la habitación
-  const offs: Record<string, number> = {};
-  gente.querySelectorAll<HTMLElement>('[data-hab]').forEach((el) => {
-    const num = el.dataset.hab!; const c = centroHab(num); if (!c) return;
-    const pr = stage!.proyectar(c); const k = offs[num] = (offs[num] ?? -1) + 1;
-    const n = Math.min(5, grupos.find((g) => g.num === num)?.gente.length ?? 1);
+  // cada grupo bajo el número de su habitación
+  gente.querySelectorAll<HTMLElement>('.nv-pod').forEach((el) => {
+    const pr = stage!.proyectarHab(el.dataset.hab!); if (!pr) return;
     el.style.display = pr.visible ? '' : 'none';
-    el.style.transform = `translate(${pr.x + (k - (n - 1) / 2) * 40}px, ${pr.y + 36}px)`;
+    el.style.transform = `translate(${pr.x}px, ${pr.y + 30}px) translateX(-50%)`;
   });
 }
 function caraHtml(p: Persona, estado: 'dentro' | 'asignado', extra = ''): string {
@@ -152,6 +149,7 @@ function loop(): void {
   if (!activo) return;
   raf = requestAnimationFrame(loop);
   if (!stage || !ui) return;
+  if (!ajustado && stage.modo === 'planta') { ajustado = true; margenFirma = ''; ajustarMargen(); }
   dibujarGente();
   if (!pins || !pins.isConnected) { pins = document.createElement('div'); pins.className = 'nv-pins'; ui.parentElement?.insertBefore(pins, ui); pins.addEventListener('click', onPin); }
   const lista = filtradas().filter((n) => n.pos);
@@ -242,7 +240,21 @@ export function render(): void {
   ${personaSel ? uiPersona() : creando ? uiCrear() : `<aside class="tw-card tw-panel nv-det" id="nvDet" ${sel ? '' : 'hidden'}></aside>`}
   ${uiTimeline()}`;
   if (sel && !creando) { const n = novedades().find((x) => x.id === sel); if (n) void pintarDetalle(n); }
+  requestAnimationFrame(ajustarMargen);
 }
+/** la planta se encuadra en la zona que no tapan el panel, el detalle ni la línea de tiempo */
+let margenFirma = ''; let ajustado = false;
+function ajustarMargen(): void {
+  if (!stage || !ui || !activo) return;
+  const host = ui.parentElement!.getBoundingClientRect(); if (!host.width) return;
+  const r = (q: string) => { const e = ui!.querySelector<HTMLElement>(q); return e && !e.hidden && e.offsetParent ? e.getBoundingClientRect() : null; };
+  const side = r('.nv-side'), tl = r('.nv-tl'), det = r('.nv-det:not([hidden]),.nv-form-p,.nv-perfil-p');
+  const m = { l: side ? side.right - host.left + 12 : 20, r: det ? host.right - det.left + 12 : 24, t: 90, b: tl ? host.bottom - tl.top + 12 : 20 };
+  const k = JSON.stringify(m); if (k === margenFirma) return; const primera = !margenFirma; margenFirma = k; stage.setMargen(m);
+  if (stage.modo === 'planta') { if (filtro.hab) void stage.acercarHabitacion(filtro.hab); else stage.ajustarPlanta(!primera); }
+}
+addEventListener('resize', () => { margenFirma = ''; requestAnimationFrame(ajustarMargen); });
+
 
 function uiTimeline(): string {
   // días visibles: según periodo/fecha; por defecto las últimas 2 semanas hasta hoy

@@ -54,6 +54,12 @@ export interface Stage {
   encuadrar(): void;
   conteo(id: string): { cats: string[]; elementos: number | null; tris: number };
   resize(): void;
+  /** zona libre del lienzo (px que tapan los paneles): el modelo se encuadra dentro de ella */
+  setMargen(m: { l: number; r: number; t: number; b: number } | null): void;
+  /** en planta: llena la zona libre con las habitaciones del piso */
+  ajustarPlanta(anim?: boolean): void;
+  /** posición en pantalla de la etiqueta de una habitación */
+  proyectarHab(num: string): { x: number; y: number; visible: boolean } | null;
   pausar(p: boolean): void;
   /** libera el contexto de la memoria de video (al entrar al gemelo interior) */
   liberarMemoria(): void;
@@ -558,6 +564,18 @@ export function crearStage(host: HTMLElement): Stage {
     persp.aspect = w / h; persp.updateProjectionMatrix();
     const H = (orto.top - orto.bottom) || 1; const asp = w / h;
     orto.left = -H * asp / 2; orto.right = H * asp / 2; orto.updateProjectionMatrix();
+    aplicarMargen();
+  }
+  let margen: { l: number; r: number; t: number; b: number } | null = null;
+  function aplicarMargen(): void {
+    const w = host.clientWidth, h = host.clientHeight; if (!w || !h) return;
+    for (const c of [persp, orto] as (THREE.PerspectiveCamera | THREE.OrthographicCamera)[]) {
+      if (!margen) { c.clearViewOffset(); continue; }
+      const lw = Math.max(80, w - margen.l - margen.r), lh = Math.max(80, h - margen.t - margen.b);
+      const k = Math.min(lw / w, lh / h); const fw = w * k, fh = h * k;
+      const cx = margen.l + lw / 2, cy = margen.t + lh / 2;
+      c.setViewOffset(fw, fh, -(cx - fw / 2), -(cy - fh / 2), w, h);
+    }
   }
   const ro = new ResizeObserver(() => { resize(); despertar(500); }); ro.observe(host);
   function loop(): void {
@@ -615,6 +633,12 @@ export function crearStage(host: HTMLElement): Stage {
       habSel = num; pintarSalas(); api.onHabitacion?.(num);
       if (num && enfocar) void api.acercarHabitacion(num);
     },
+    proyectarHab(num) {
+      const lb = salaLabel.get(num); if (!lb) return null;
+      tmp.setFromMatrixPosition(lb.matrixWorld).project(cam as THREE.PerspectiveCamera);
+      const w = canvas.clientWidth, h = canvas.clientHeight;
+      return { x: (tmp.x * 0.5 + 0.5) * w, y: (-tmp.y * 0.5 + 0.5) * h, visible: tmp.z < 1 && tmp.z > -1 && !pausado };
+    },
     centroHabitacion(num) {
       const m = salaMesh.get(num); if (!m) return null;
       return new THREE.Box3().setFromObject(m).getCenter(new THREE.Vector3());
@@ -622,7 +646,7 @@ export function crearStage(host: HTMLElement): Stage {
     async acercarHabitacion(num) {
       const m = salaMesh.get(num); if (!m || cam !== orto) return;
       const b = new THREE.Box3().setFromObject(m); const c = b.getCenter(new THREE.Vector3()); const s = b.getSize(new THREE.Vector3());
-      const H = orto.top - orto.bottom; const zoom = Math.min(controls.maxZoom, H / (Math.max(s.x, s.z) * 2.2));
+      const H = orto.top - orto.bottom; const zoom = Math.min(controls.maxZoom, H / (Math.max(s.x, s.z) * 3.4));
       await new Promise<void>((res) => {
         gsap.to(controls.target, { x: c.x, z: c.z, duration: 1, ease: 'power2.inOut', onUpdate: () => { orto.position.set(controls.target.x, orto.position.y, controls.target.z); } });
         gsap.to(orto, { zoom, duration: 1, ease: 'power2.inOut', onUpdate: () => orto.updateProjectionMatrix(), onComplete: res });
@@ -642,6 +666,23 @@ export function crearStage(host: HTMLElement): Stage {
       return { cats: e.cats.filter((c) => (porCat.get(c) ?? []).some((m) => m.parent === p2?.grupo || m.parent === mepGrupo)), elementos: hayEl ? el : null, tris };
     },
     resize: () => { resize(); despertar(500); },
+    setMargen(m) { margen = m; aplicarMargen(); despertar(800); },
+    ajustarPlanta(anim = true) {
+      if (modo !== 'planta' || cam !== orto || !salaMesh.size) return;
+      const b = new THREE.Box3(); if (p2) b.expandByObject(p2.grupo); else salaMesh.forEach((m) => b.expandByObject(m));
+      const c = b.getCenter(new THREE.Vector3());
+      const w = host.clientWidth, h = host.clientHeight; const z0 = orto.zoom; const t0 = controls.target.clone(); const p0 = orto.position.clone();
+      orto.zoom = 1; controls.target.set(c.x, controls.target.y, c.z); orto.position.set(c.x, orto.position.y, c.z); orto.updateProjectionMatrix(); orto.updateMatrixWorld();
+      let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
+      for (const x of [b.min.x, b.max.x]) for (const y of [b.min.y, b.max.y]) for (const z of [b.min.z, b.max.z]) { tmp.set(x, y, z).project(orto); x0 = Math.min(x0, tmp.x); x1 = Math.max(x1, tmp.x); y0 = Math.min(y0, tmp.y); y1 = Math.max(y1, tmp.y); }
+      const ex = (x1 - x0) / 2 * w, ey = (y1 - y0) / 2 * h;
+      const lw = margen ? w - margen.l - margen.r : w, lh = margen ? h - margen.t - margen.b : h;
+      const zoom = Math.max(controls.minZoom, Math.min(controls.maxZoom, Math.min(lw * 0.9 / ex, lh * 0.86 / ey)));
+      orto.zoom = z0; controls.target.copy(t0); orto.position.copy(p0); orto.updateProjectionMatrix();
+      if (!anim) { orto.zoom = zoom; controls.target.set(c.x, t0.y, c.z); orto.position.set(c.x, p0.y, c.z); orto.updateProjectionMatrix(); despertar(600); return; }
+      gsap.to(controls.target, { x: c.x, z: c.z, duration: 0.9, ease: 'power2.inOut', onUpdate: () => { orto.position.set(controls.target.x, orto.position.y, controls.target.z); } });
+      gsap.to(orto, { zoom, duration: 0.9, ease: 'power2.inOut', onUpdate: () => orto.updateProjectionMatrix() });
+    },
     get vista3d() { return vista3d; },
     onCamara: null,
     async setVista3D(on) {

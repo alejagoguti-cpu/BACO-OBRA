@@ -283,7 +283,7 @@ export function crearBim(host: HTMLElement): Bim {
         aplicar();
         if (primera) {
           controls.target.copy(centro);
-          hacia.set(centro.x + 42, centro.y + 50, centro.z + 57);
+          hacia.set(centro.x + 38, centro.y + 46, centro.z + 52);
           desde.set(centro.x + 90, centro.y + 140, centro.z + 120);
           camera.position.copy(desde); t0 = performance.now(); anim = 1; camOnly = false;
         }
@@ -300,7 +300,7 @@ export function crearBim(host: HTMLElement): Bim {
     resetGrupos() { ocultos.clear(); aplicar(); },
     resetCamara() {
       desde.copy(camera.position);
-      hacia.set(centro.x + 42, centro.y + 50, centro.z + 57);
+      hacia.set(centro.x + 38, centro.y + 46, centro.z + 52);
       targetDesde.copy(controls.target);
       targetHacia.copy(centro);
       t0 = performance.now(); anim = 1; camOnly = true;

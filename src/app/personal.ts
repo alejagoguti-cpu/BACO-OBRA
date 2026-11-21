@@ -36,6 +36,13 @@ async function recargar(): Promise<void> {
   avisar();
 }
 export async function iniciarPersonal(): Promise<void> {
+  if (import.meta.env.DEV && perfil?.id === 'dev') { // solo pruebas locales (?demo): personas ficticias para ver el diseño
+    const P = (id: string, nombre: string, especialidad: string) => ({ id, nombre, area: '', especialidad, contratista: '', foto_path: null, activo: true });
+    personas = [P('a', 'Prueba Arq', 'arq'), P('b', 'Prueba Ele', 'ele'), P('c', 'Prueba Hid', 'hid'), P('d', 'Prueba Aseo', 'aseo'), P('e', 'Prueba Dos', 'arq'), P('f', 'Prueba Tres', 'ele')];
+    asign = [['a', '216'], ['b', '216'], ['c', '216'], ['d', '216'], ['e', '219'], ['f', '220']].map(([p, h], i) => ({ id: i, personal_id: p, habitacion: h, desde: '', hasta: null }));
+    checks = [{ id: 1, personal_id: 'b', habitacion: '216', ts: new Date().toISOString(), salida: null }];
+    subs.forEach((f) => f()); return;
+  }
   if (!sb || !perfil || canal) return;
   await recargar();
   let t = 0;
