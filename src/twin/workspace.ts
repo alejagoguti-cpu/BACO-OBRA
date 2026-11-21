@@ -124,7 +124,7 @@ async function abrirGemelo(hab: string, elId?: string): Promise<void> {
   if (stage?.modo === 'planta') { stage.pausar(false); await stage.acercarHabitacion(hab); }
   veil.classList.add('on');
   await new Promise((r) => setTimeout(r, 450));
-  stage?.pausar(true);
+  stage?.pausar(true); stage?.liberarMemoria();
   const rh = $('#twRoom')!; rh.hidden = false; rh.innerHTML = '';
   room?.dispose();
   room = crearRoom(rh, cfg.gemelo); roomHab = hab;
@@ -164,6 +164,7 @@ function render(): void {
   else html = uiBim(modo) + (modo === 'planta' ? uiCapas() + (habSel ? uiHabitacion(habSel) : '') : '');
   ui.innerHTML = html;
   if (habSel && modo === 'planta' && ruta.v !== 'gemelo') void completarHabitacion(habSel);
+  if (ruta.v === 'gemelo' && elSel) void pintarFicha(elSel);
   pintarCoincidencias();
 }
 

@@ -24,7 +24,7 @@ const W = window as unknown as { HLF?: HLFApi };
 
 const app = document.getElementById('app')!;
 app.innerHTML = `
-  <nav class="rail side" id="rail" aria-label="Secciones"></nav>
+  <nav class="rail" id="rail" aria-label="Secciones"></nav>
   <div class="topbar" id="topbar"></div>
   <div id="ov"></div>
   <div id="page"></div>
@@ -254,21 +254,15 @@ function renderChrome(): void {
   const sec = seccionDe(route);
   const ab = listaNovedades().filter((n) => n.estado !== 'Cerrada').length;
   const href = (k: string) => k === 'bim' ? 'bim-' + (S.espUser || 'arq') : k;
-  const item = (k: string) => { const n = NAV.find((x) => x[0] === k); if (!n) return ''; return `<a href="#${href(k)}" ${sec === k ? 'aria-current="page"' : ''} title="${n[1]}">${ic(n[2])}<span class="lbl">${n[1]}</span>${k === 'novedades' && ab ? `<span class="dot">${ab}</span>` : ''}</a>`; };
-  $('rail').innerHTML = `<div class="sb-brand"><img src="logos/estelar.png" alt="Hoteles Estelar"><span>Gemelo<br>digital</span></div>`
-    + NAV_SEC.map(([t, ks]) => `<div class="sb-sec">${t}</div>` + ks.map(item).join('')).join('')
-    + `<div class="sb-foot">
-        <div class="sb-user"><span class="av">${esc(iniciales(perfil?.nombre ?? ''))}</span><span class="t"><b>${esc(perfil?.nombre ?? 'Sin sesión')}</b><small>${perfil ? esc(ROL_TXT[perfil.rol]) + ' · ' + (perfil.metodo === 'qr' ? 'QR' : 'cuenta') : ''}</small></span></div>
-        <button class="sb-btn" data-act="tema" title="Cambiar tema">${ic(oscuro() ? 'sun' : 'moon')}<span>${oscuro() ? 'Modo claro' : 'Modo oscuro'}</span></button>
-        <button class="sb-btn" data-act="compacta" title="${compacta ? 'Expandir' : 'Compactar'} barra">${ic('side')}<span>${compacta ? 'Expandir' : 'Compactar'}</span></button>
-        <button class="sb-btn" data-act="salir" title="Cerrar sesión">${ic('logout')}<span>Cerrar sesión</span></button>
-      </div>`;
+  $('rail').innerHTML = `<button class="logo" data-act="salir" title="${esc(perfil?.nombre ?? '')} · Cerrar sesión"><img src="logos/baco.png" alt="BACO"></button>`
+    + NAV_SEC.flatMap(([, ks]) => ks).map((k) => { const n = NAV.find((x) => x[0] === k); if (!n) return ''; return `<a href="#${href(k)}" ${sec === k ? 'aria-current="page"' : ''} aria-label="${n[1]}">${ic(n[2])}<span class="lbl">${n[1]}</span><span class="rtx">${n[1].split(' ')[0]}</span>${k === 'novedades' && ab ? `<span class="dot">${ab}</span>` : ''}</a>`; }).join('');
   const m = migasActuales();
   const atras = m.length > 1 ? m[m.length - 2][1] : '';
   $('topbar').innerHTML = `
     <nav class="crumbs" aria-label="Ruta">${atras ? `<a class="bk" href="${atras}" aria-label="Regresar">${ic('back')}</a>` : ''}${m.map(([t, h], i) => (i ? '<span class="sep">/</span>' : '') + `<a href="${h}">${esc(t)}</a>`).join('')}</nav>
     <form class="search" id="fBuscar" role="search">${ic('search')}<input id="q" list="sugerencias" placeholder="Buscar hotel, habitación o novedad…" aria-label="Buscar hotel o habitación"><datalist id="sugerencias">${HOTELES.map((h) => `<option value="${esc(h.nombre)}">`).join('')}${UBICACIONES.map(([, t]) => `<option value="${esc(t)}">`).join('')}</datalist></form>
     <a class="circle light" href="#novedades" aria-label="${ab} novedades abiertas" style="position:relative">${ic('bell')}${ab ? '<i style="position:absolute;top:9px;right:10px;width:8px;height:8px;border-radius:50%;background:var(--coral);border:2px solid var(--card)"></i>' : ''}</a>
+    <button class="circle light" data-act="tema" aria-label="Cambiar tema" title="Modo claro / oscuro">${ic(oscuro() ? 'sun' : 'moon')}</button>
     <button class="circle light as-btn" data-act="asAbrir" title="Asistente BIM" aria-label="Abrir asistente">${ic('spark')}</button>
     <div class="who" id="who" aria-label="Personas conectadas"></div>`;
   pintarWho();

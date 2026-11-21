@@ -22,6 +22,9 @@ await page.evaluate(() => { const b = document.querySelector('.tw-roomtag[data-h
 await page.evaluate(() => { location.hash = 'fontana/216/gemelo'; }); await espera(12000); await shot('07-gemelo');
 const c2 = await page.$('#twRoom canvas'); const b2 = await c2.boundingBox();
 await page.mouse.click(b2.x + b2.width * 0.5, b2.y + b2.height * 0.6); await espera(2500); await shot('08-ficha');
+for (let k = 0; k < 4; k++) { await page.evaluate(() => document.querySelector('[data-tw="vista"][data-v="recorrido"]')?.click()); await espera(300); }
+await espera(2200); await shot('10-recorrido');
+for (let k = 1; k <= 3; k++) { await page.evaluate(() => document.querySelector('[data-tw="paso"][data-v="1"]')?.click()); await espera(2300); await shot('11-paso' + k); }
 await page.evaluate(() => { location.hash = 'plan'; }); await espera(2500); await shot('09-plan-sidebar');
 console.log(errs.slice(0, 15).join('\n') || 'sin errores');
 await browser.close();

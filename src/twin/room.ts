@@ -5,6 +5,7 @@
    del nombre del MATERIAL del SketchUp (lo dice la ficha: no hay IDs de Revit en este modelo). */
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { draco } from './draco';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
@@ -17,6 +18,10 @@ import gsap from 'gsap';
 
 export interface ElementoTwin { id: string; nombre: string; categoria: string; especialidad: string; material: string; nodo: string; tris: number }
 const REGLAS: [RegExp, string, string][] = [
+  [/porcelain/i, 'Aparato sanitario', 'Red hidrosanitaria'],
+  [/tile ba|piso tile/i, 'Piso de baño', 'Acabados e interiorismo'],
+  [/santorini|silver blue/i, 'Enchape de baño', 'Acabados e interiorismo'],
+  [/aluminium brushed|anodized/i, 'Grifería o accesorio de baño', 'Red hidrosanitaria'],
   [/parquet|flooring/i, 'Piso', 'Acabados e interiorismo'],
   [/carpet|tapete/i, 'Tapete', 'Mobiliario y equipamiento'],
   [/glass window/i, 'Ventana', 'Arquitectura'],
@@ -64,7 +69,7 @@ export function crearRoom(host: HTMLElement, url: string): Room {
   scene.environmentIntensity = 0.55;
   const amb = new THREE.HemisphereLight('#fff7ec', '#7a7064', 0.35); scene.add(amb);
   const sol = new THREE.DirectionalLight('#ffe9cf', 2.4); // luz de ventana
-  sol.castShadow = true; sol.shadow.mapSize.set(2048, 2048); sol.shadow.bias = -0.0003; sol.shadow.normalBias = 0.015; sol.shadow.radius = 5;
+  sol.castShadow = true; sol.shadow.mapSize.set(2048, 2048); sol.shadow.bias = -0.0008; sol.shadow.normalBias = 0.045; sol.shadow.radius = 5;
   scene.add(sol, sol.target);
 
   const camera = new THREE.PerspectiveCamera(50, 1, 0.03, 120);
@@ -103,7 +108,7 @@ export function crearRoom(host: HTMLElement, url: string): Room {
     if (!r.ok) throw new Error('Modelo no disponible: ' + url);
     const bytes = new Uint8Array(await r.arrayBuffer());
     const data = bytes[0] === 0x1f && bytes[1] === 0x8b ? gunzipSync(bytes).buffer : bytes.buffer;
-    const gltf = await new GLTFLoader().parseAsync(data as ArrayBuffer, '');
+    const gltf = await new GLTFLoader().setDRACOLoader(draco()).parseAsync(data as ArrayBuffer, '');
     gltf.scene.updateMatrixWorld(true);
     gltf.scene.traverse((o) => {
       const m = o as THREE.Mesh; if (!m.isMesh) return;

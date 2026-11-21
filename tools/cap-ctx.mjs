@@ -1,0 +1,10 @@
+import puppeteer from 'puppeteer-core';
+const BASE = 'http://127.0.0.1:4321/BACO-OBRA/';
+const b = await puppeteer.launch({ executablePath: 'C:/Program Files/Google/Chrome/Application/chrome.exe', headless: 'new', args: ['--no-sandbox', '--use-angle=d3d11', '--ignore-gpu-blocklist', '--window-size=1600,900'] });
+const p = await b.newPage(); await p.setViewport({ width: 1600, height: 900 });
+const errs = []; p.on('pageerror', (e) => errs.push(e.message)); p.on('console', (m) => { if (['error','warning'].includes(m.type())) errs.push(m.type() + ': ' + m.text().slice(0, 1600)); });
+await p.goto(BASE + '?demo#fontana', { waitUntil: 'networkidle2', timeout: 120000 }); await new Promise((r) => setTimeout(r, 9000));
+await p.screenshot({ path: 'build/cap/c1-edificio.jpg', type: 'jpeg', quality: 78 });
+await p.evaluate(() => { location.hash = 'fontana/216/gemelo'; }); await new Promise((r) => setTimeout(r, 26000));
+await p.screenshot({ path: 'build/cap/c2-gemelo.jpg', type: 'jpeg', quality: 78 });
+console.log(errs.join('\n') || 'sin errores'); await b.close();

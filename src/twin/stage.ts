@@ -6,6 +6,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { draco } from './draco';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { CSS2DRenderer, CSS2DObject } from 'three/examples/jsm/renderers/CSS2DRenderer.js';
 import gsap from 'gsap';
@@ -54,6 +55,8 @@ export interface Stage {
   conteo(id: string): { cats: string[]; elementos: number | null; tris: number };
   resize(): void;
   pausar(p: boolean): void;
+  /** libera el contexto de la memoria de video (al entrar al gemelo interior) */
+  liberarMemoria(): void;
   dispose(): void;
   /* ---- módulo Novedades ---- */
   readonly vista3d: boolean;
@@ -84,7 +87,7 @@ export function crearStage(host: HTMLElement): Stage {
   scene.environment = pm.fromScene(new RoomEnvironment(), 0.04).texture;
   scene.add(new THREE.HemisphereLight('#f4f7fb', '#9d968b', 0.55));
   const sol = new THREE.DirectionalLight('#fff1dc', 2.1);
-  sol.position.set(-60, 110, 45); sol.castShadow = true; sol.shadow.mapSize.set(4096, 4096);
+  sol.position.set(-60, 110, 45); sol.castShadow = true; sol.shadow.mapSize.set(2048, 2048);
   Object.assign(sol.shadow.camera, { left: -90, right: 90, top: 90, bottom: -90, near: 10, far: 400 });
   sol.shadow.bias = -0.0004; sol.shadow.normalBias = 0.02; sol.shadow.radius = 4;
   scene.add(sol);
@@ -126,6 +129,14 @@ export function crearStage(host: HTMLElement): Stage {
   const edificio = new THREE.Group(); edificio.name = 'Torre Suites'; scene.add(edificio);
   const contexto = new THREE.Group(); contexto.name = 'contexto'; scene.add(contexto);
   const ctxMats: THREE.Material[] = [];
+  let conPiso = false;
+  let ctxCargado = false; let enuCtx: Manifest['enu'] | null = null;
+  /** libera la memoria de video del contexto (se recarga desde la caché del navegador al volver) */
+  function liberarContexto(): void {
+    if (!ctxCargado) return;
+    contexto.traverse((o) => { const m = o as THREE.Mesh; if (!m.isMesh) return; m.geometry.dispose(); (Array.isArray(m.material) ? m.material : [m.material]).forEach((x) => { Object.values(x).forEach((v) => { if (v instanceof THREE.Texture) v.dispose(); }); x.dispose(); }); });
+    contexto.clear(); ctxMats.length = 0; ctxCargado = false;
+  }
   const porCat = new Map<string, THREE.Mesh[]>();
   const pickEdificio: THREE.Mesh[] = [];
   const mepGrupo = new THREE.Group(); mepGrupo.name = 'MEP piso 2';
@@ -242,10 +253,26 @@ export function crearStage(host: HTMLElement): Stage {
       return r;
     };
     const enHuella = (e: number, n: number) => [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => huella.some((p) => dentro(p, e + dx, n + dy)));
-    const loader = new GLTFLoader();
-    await Promise.all(['hotel_plazoleta', 'hotel_fachadas', 'hotel_cubiertas', 'torres_vecinas'].map(async (f) => {
-      let gltf; try { gltf = await loader.loadAsync(`${BASE}secciones/${f}.glb`); } catch { return; }
-      const recortar = f === 'hotel_fachadas' || f === 'hotel_cubiertas';
+    const loader = new GLTFLoader().setDRACOLoader(draco());
+    ctxCargado = true; enuCtx = enu;
+    // mismo contexto que la escena del sitio (src/site.ts): suelos, manzanas, hotel, vecinos PBR y árboles 3D
+    const leer = async (f: string) => { try { return (await (await fetch(BASE + 'secciones/' + f)).json()).secciones as { key: string; file: string }[]; } catch { return []; } };
+    const [edif, suelo, arb3d] = await Promise.all([leer('edificios.json'), leer('suelo.json'), leer('arboles3d.json')]);
+    const SUELO_TEX: Record<string, [string, number]> = { Terreno: ['tex_prado.webp', 6], Separadores: ['tex_prado.webp', 6], Vias: ['tex_asfalto.webp', 5], Andenes: ['tex_anden.webp', 2], Ciclorrutas: ['tex_ciclo.webp', 3] };
+    const texCtx = new Map<string, THREE.Texture>();
+    const tex = (f: string) => { if (!texCtx.has(f)) { const t = texLoader.load(BASE + 'secciones/' + f); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; texCtx.set(f, t); } return texCtx.get(f)!; };
+    const archivos = [
+      ...suelo.map((x) => ({ f: x.file, tipo: 'suelo', key: x.key })),
+      { f: 'hotel_plazoleta.glb', tipo: 'pbr', key: '' }, { f: 'hotel_fachadas.glb', tipo: 'hotel', key: '' }, { f: 'hotel_cubiertas.glb', tipo: 'hotel', key: '' },
+      ...['torres_vecinas', 'esquina_ak15', 'metro127', 'clinica127', 'unicentro_cubierta'].map((k) => ({ f: k + '.glb', tipo: 'pbr', key: '' })),
+      ...edif.filter((x) => x.key !== 'Hotel').map((x) => ({ f: x.file, tipo: 'edif', key: '' })),
+      ...arb3d.map((x) => ({ f: x.file, tipo: 'arbol', key: '' })),
+    ];
+    let hayPiso = false;
+    await Promise.all(archivos.map(async ({ f: archivo, tipo, key }) => {
+      let gltf; try { gltf = await loader.loadAsync(`${BASE}secciones/${archivo}`); } catch { return; }
+      const recortar = tipo === 'hotel';
+      if (tipo === 'suelo') hayPiso = true;
       gltf.scene.traverse((o) => {
         const mesh = o as THREE.Mesh; if (!mesh.isMesh) return;
         const g = mesh.geometry as THREE.BufferGeometry; const pos = g.getAttribute('position');
@@ -257,12 +284,33 @@ export function crearStage(host: HTMLElement): Stage {
           }
           g.setIndex(keep);
         }
-        const m = mesh.material as THREE.MeshStandardMaterial;
+        let m = mesh.material as THREE.MeshStandardMaterial;
+        if (tipo === 'suelo') {
+          const [t, esc] = SUELO_TEX[key] ?? ['', 0];
+          if (t) {
+            const uv = new Float32Array(pos.count * 2);
+            for (let i = 0; i < pos.count; i++) { uv[i * 2] = pos.getX(i) / esc; uv[i * 2 + 1] = pos.getZ(i) / esc; }
+            g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+            m = new THREE.MeshStandardMaterial({ map: tex(t), roughness: 0.95 });
+          }
+          if (key !== 'Terreno') { m.polygonOffset = true; m.polygonOffsetFactor = -1; m.polygonOffsetUnits = -2; }
+          mesh.material = m;
+        } else if (tipo === 'arbol') {
+          // árboles 3D: sus UV cuantizadas no muestrean bien la textura (también en Cesium, que los pinta con un
+          // sombreador propio); aquí igual: follaje verde y tronco/ramas café, sin textura
+          const hoja = /leaves/i.test(m.name);
+          m = new THREE.MeshStandardMaterial({ color: hoja ? '#5A7A3E' : '#5E4C3B', roughness: 0.95, side: THREE.DoubleSide, flatShading: true }); // normales cuantizadas inservibles: sombreado plano
+          mesh.material = m;
+        } else if (tipo === 'edif') {
+          m = new THREE.MeshStandardMaterial({ color: '#e6e2db', roughness: 0.9, flatShading: true }); mesh.material = m;
+        }
         m.transparent = true; m.userData.baseOp = m.opacity; ctxMats.push(m);
-        mesh.castShadow = f !== 'hotel_plazoleta'; mesh.receiveShadow = true; mesh.raycast = () => {};
+        mesh.castShadow = tipo === 'hotel' || tipo === 'pbr' || tipo === 'arbol'; mesh.receiveShadow = tipo !== 'arbol'; mesh.raycast = () => {};
       });
       contexto.add(gltf.scene);
     }));
+    if (hayPiso) sombraSuelo.visible = false;
+    conPiso = hayPiso;
     aplicarEstado();
   }
 
@@ -331,7 +379,7 @@ export function crearStage(host: HTMLElement): Stage {
     // contexto
     for (const m of ctxMats) { m.opacity = (m.userData.baseOp ?? 1) * st.ctx; m.visible = st.ctx > 0.01; m.depthWrite = st.ctx > 0.98; }
     contexto.visible = st.ctx > 0.01;
-    sombraSuelo.visible = st.otros > 0.2;
+    sombraSuelo.visible = !conPiso && st.otros > 0.2;
     // habitaciones
     salasGrupo.visible = st.salas > 0.01;
     pintarSalas();
@@ -372,7 +420,7 @@ export function crearStage(host: HTMLElement): Stage {
     const altoExpl = (niveles.length - 1) * GAP + s.y;
     tl.addLabel('alejar')
       .to(rig, { H: r0.H * 1.25, pol: 1.16, duration: 1.0 }, 'alejar')
-      .to(st, { ctx: 0, duration: 0.9 }, 'alejar')
+      .to(st, { ctx: 0.28, duration: 0.9 }, 'alejar')
       .addLabel('explotar')
       .to(st, { sep: 1, duration: 1.8, ease: 'power3.inOut' }, 'explotar')
       .to(rig, { ty: c.y * 0.5 + altoExpl * 0.42, H: Math.max(r0.H * 1.25, altoExpl * 1.05), duration: 1.8 }, 'explotar')
@@ -526,7 +574,7 @@ export function crearStage(host: HTMLElement): Stage {
     seleccionarEdificio(sel) {
       if (edificioSel === sel) return;
       edificioSel = sel;
-      gsap.to(st, { ctx: sel ? 0.18 : 1, duration: 0.8, ease: 'power2.out' });
+
       if (sel) { const c = caja.getCenter(new THREE.Vector3()); void volarA(c, rig.H > 0 ? Math.max(caja.getSize(tmp).x, caja.getSize(tmp).z) * 0.9 : 60); }
       api.onEdificio?.(sel);
     },
@@ -618,7 +666,9 @@ export function crearStage(host: HTMLElement): Stage {
     },
     habitacionEn,
     resaltarHabitacion(num) { habSel = num; pintarSalas(); },
-    pausar(p) { pausado = p; labels.domElement.style.display = p ? 'none' : ''; },
+    liberarMemoria() { liberarContexto(); },
+    pausar(p) {
+      if (!p && !ctxCargado && enuCtx) void cargarContexto(enuCtx); pausado = p; labels.domElement.style.display = p ? 'none' : ''; },
     dispose() {
       vivo = false; cancelAnimationFrame(raf); ro.disconnect(); tl.kill(); vuelo?.kill(); controls.dispose();
       scene.traverse((o) => { const m = o as THREE.Mesh; if (m.geometry) m.geometry.dispose(); const mt = m.material as THREE.Material | THREE.Material[] | undefined; if (mt) (Array.isArray(mt) ? mt : [mt]).forEach((x) => x.dispose()); });

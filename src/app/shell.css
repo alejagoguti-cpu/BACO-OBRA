@@ -1,14 +1,12 @@
 /* Shell autenticado: sidebar fija (expandida/compacta, nunca se oculta) + cabecera con migas y presencia + acceso. */
-:root{--side-w:232px;--top-h:68px}
-body.side-compact{--side-w:76px}
+:root{--side-w:92px;--top-h:68px}
 @media (max-width:720px){:root,body.side-compact{--side-w:0px}}
 
 /* el contenido central se adapta al espacio restante */
-body.con-sesion #cesiumContainer{left:var(--side-w)!important;transition:left .25s ease}
-body.con-sesion #app .page,body.con-sesion #bim,body.con-sesion #prototype .proto{left:var(--side-w)!important}
+body.con-sesion #bim,body.con-sesion #prototype .proto{left:var(--side-w)!important}
 body.con-sesion #app .topbar{left:calc(var(--side-w) + 16px)!important;right:16px!important}
 body.con-sesion #app .mapcard{left:calc(var(--side-w) + 16px)!important}
-body.con-sesion #app .page{padding-left:28px!important}
+body.con-sesion #app .page{left:0!important;padding-left:calc(var(--side-w) + 16px)!important}
 
 /* ---------- sidebar ---------- */
 #app .rail.side{position:fixed;z-index:60;left:0;top:0;bottom:0;transform:none;width:var(--side-w);border-radius:0;padding:14px 10px;gap:2px;
@@ -232,3 +230,4 @@ body.side-compact #app .rail.side .sb-brand img{height:20px}
 #app .as-in .btn{padding:0 16px}
 #app .as-dots{display:inline-flex;gap:3px;margin-right:6px}#app .as-dots i{width:6px;height:6px;border-radius:50%;background:#B79E66;animation:accP 1s infinite}
 #app .as-dots i:nth-child(2){animation-delay:.15s}#app .as-dots i:nth-child(3){animation-delay:.3s}
+body.con-sesion #app .rail{z-index:60}

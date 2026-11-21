@@ -31,8 +31,8 @@ export const TWIN = {
   } as Record<string, { habitaciones: string; mep: string }>,
   habitaciones: {
     '216': {
-      gemelo: 'prototype/habitacion-216-sketchup.glb.gz',
-      fuenteGemelo: 'Maqueta SketchUp “HABITACIÓN TIPO 526 TWIN” (210-HLF-MOCKUP) · la 216 es tipo Twin',
+      gemelo: 'prototype/habitacion-216-twin.glb',
+      fuenteGemelo: 'Maqueta SketchUp 210-HLF-MOCKUP (tipo Twin) · baño detallado de la maqueta, reflejado a su posición en la Twin',
     },
   } as Record<string, { gemelo: string; fuenteGemelo: string }>,
 } as const;
