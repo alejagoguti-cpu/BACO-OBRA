@@ -1,10 +1,10 @@
 /* Pantalla de acceso: QR de sesión (temporal, de un solo uso) o cuenta corporativa.
    También: aprobación del QR desde el teléfono (#qr-aprobar/<id>/<nonce>) y nueva contraseña (#nueva-clave). */
-import { backendListo, entrarConClave, registrar, recuperar, nuevaClave, perfil, qrNuevo, qrEstado, qrCanjear, qrMarcarEscaneado, qrAprobar, ROL_TXT, type SesionQR, type EstadoQR } from './auth';
+import { ACCESO_ABIERTO, backendListo, entrarConClave, registrar, recuperar, nuevaClave, perfil, qrNuevo, qrEstado, qrCanjear, qrMarcarEscaneado, qrAprobar, ROL_TXT, type SesionQR, type EstadoQR } from './auth';
 import { esc, ic, toast } from './ui';
 
 type Tab = 'qr' | 'cuenta' | 'registro' | 'recuperar';
-let tab: Tab = 'qr';
+let tab: Tab = ACCESO_ABIERTO ? 'cuenta' : 'qr';
 let qr: SesionQR | null = null;
 let qrEst: EstadoQR = 'esperando';
 let poll = 0; let tick = 0;
@@ -82,9 +82,9 @@ function pintar(): void {
         </div>` : tab === 'cuenta' ? `
         <form class="acc-form" id="fAccCuenta">
           <label>Correo corporativo<input type="email" name="email" autocomplete="username" required></label>
-          <label>Contraseña<input type="password" name="clave" autocomplete="current-password" required minlength="6"></label>
+          <label>Contraseña<input type="password" name="clave" autocomplete="current-password" required ${ACCESO_ABIERTO ? '' : 'minlength="6"'}></label>
           <button class="acc-btn pri">Ingresar ${ic('arrowR', 2)}</button>
-          <div class="acc-links"><button type="button" data-acc="tab" data-v="recuperar">¿Olvidaste tu contraseña?</button><button type="button" data-acc="tab" data-v="registro">Solicitar cuenta</button></div>
+          ${ACCESO_ABIERTO ? '<p class="acc-muted acc-fine">Prototipo con acceso abierto: entra con cualquier correo y una contraseña. La primera vez se crea tu cuenta; después usa la misma contraseña.</p>' : '<div class="acc-links"><button type="button" data-acc="tab" data-v="recuperar">¿Olvidaste tu contraseña?</button><button type="button" data-acc="tab" data-v="registro">Solicitar cuenta</button></div>'}
         </form>` : tab === 'registro' ? `
         <form class="acc-form" id="fAccRegistro">
           <label>Nombre completo<input name="nombre" autocomplete="name" required></label>

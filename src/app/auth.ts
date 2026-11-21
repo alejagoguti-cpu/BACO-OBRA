@@ -13,6 +13,8 @@ export const sb: SupabaseClient | null = URL_SB && KEY_SB
   ? createClient(URL_SB, KEY_SB, { auth: { persistSession: true, autoRefreshToken: true, storageKey: 'baco-twin-auth', detectSessionInUrl: true } })
   : null;
 export const backendListo = () => !!sb;
+/** prototipo: cualquier persona entra con cualquier correo y contraseña */
+export const ACCESO_ABIERTO = true;
 
 export type RolTwin = 'admin' | 'estelar' | 'bim' | 'contratista' | 'consulta';
 export interface Perfil { id: string; email: string; nombre: string; rol: RolTwin; empresa: string; metodo: 'password' | 'qr' }
@@ -60,8 +62,15 @@ function errorEs(m: string): string {
 
 export async function entrarConClave(email: string, clave: string): Promise<string | null> {
   if (!sb) return 'Backend no configurado (VITE_SUPABASE_URL / VITE_SUPABASE_KEY).';
-  const { error } = await sb.auth.signInWithPassword({ email, password: clave });
-  if (error) return errorEs(error.message);
+  // PROTOTIPO · acceso abierto: cualquier correo y contraseña. La Edge Function acceso-abierto crea la cuenta
+  // (confirmada) la primera vez; el prefijo permite contraseñas de cualquier largo. Para cerrarlo: ACCESO_ABIERTO = false.
+  const pw = ACCESO_ABIERTO ? 'baco-abierto:' + clave : clave;
+  if (ACCESO_ABIERTO) {
+    const { error: ef } = await sb.functions.invoke('acceso-abierto', { body: { email, password: pw } });
+    if (ef) { let m = ''; try { m = (await (ef as { context?: Response }).context?.json())?.error ?? ''; } catch { /* */ } return m || 'No se pudo abrir la sesión. Intenta de nuevo.'; }
+  }
+  const { error } = await sb.auth.signInWithPassword({ email: email.trim().toLowerCase(), password: pw });
+  if (error) return /Invalid login/i.test(error.message) && ACCESO_ABIERTO ? 'Ese correo ya entró antes con otra contraseña. Usa la misma de la primera vez.' : errorEs(error.message);
   await registrarAcceso('password');
   return null;
 }
