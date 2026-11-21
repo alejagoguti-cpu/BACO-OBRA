@@ -24,9 +24,9 @@ app.innerHTML = `
 const $ = (id: string) => document.getElementById(id)!;
 
 const NAV: [string, string, string][] = [
-  ['obra', 'Building Plan 3D', 'obra'], ['habitacion-216', 'Habitación 216', 'eye'], ['mapa', 'Hoteles Colombia', 'globe'], ['panel', 'Dashboard', 'panel'], ['ia', 'IA & WhatsApp', 'spark'],
-  ['avance', 'Avance semanal', 'avance'], ['novedades', 'Novedades y QR', 'novedades'], ['plan', 'Planeación', 'plan'],
-  ['proveedores', 'Proveedores', 'proveedores'], ['entregables', 'Entregables', 'entregables'], ['honorarios', 'Honorarios', 'honorarios'],
+  ['mapa', 'Hoteles Colombia', 'globe'], ['plan', 'Planeación', 'plan'], ['obra', 'Modelo 3D', 'obra'],
+  ['novedades', 'Novedades y QR', 'novedades'], ['habitacion-216', 'Habitación 216', 'eye'],
+  ['panel', 'Resumen', 'panel'], ['ia', 'Asistente', 'spark'],
 ];
 const PAGES = ['panel', 'ia', 'plan', 'avance', 'proveedores', 'novedades', 'qr', 'entregables', 'honorarios'];
 let route = ''; let anim = true;
@@ -58,7 +58,7 @@ let mapa: Promise<HLFApi> | null = null;
 let pines: { show(v: boolean): void } | null = null;
 function cargarMapa(): Promise<HLFApi> {
   mapa ??= (async () => {
-    $('ov').insertAdjacentHTML('beforeend', '<div class="hint" id="mapLoading" style="animation:none"><span class="pulse"></span>Cargando el mapa de Colombia…</div>');
+    $('ov').insertAdjacentHTML('beforeend', '<div class="map-cloud" id="mapLoading" role="status"><div class="cloud-points" aria-hidden="true"></div><span>Ubicando hoteles en Colombia…</span></div>');
     await import('../main');
     const [{ crearPinesEstelar }] = await Promise.all([import('../estelar')]);
     const hlf = W.HLF!;
@@ -85,7 +85,7 @@ let corte = true, fantasma = true;
 let guiaVista = false; try { guiaVista = localStorage.getItem('baco-obra-guia') === '1'; } catch { /* */ }
 
 /* ---------------- guía de pasos con flechas ---------------- */
-const PASOS: [string, string][] = [['Elige el hotel', 'mapa'], ['Toca la torre', 'obra'], ['Elige especialidad', ''], ['Reporta en obra', '']];
+const PASOS: [string, string][] = [['Hoteles', 'mapa'], ['Planeación', 'plan'], ['Modelo BIM', `bim-${S.espUser || 'arq'}`], ['Novedades', 'novedades'], ['Habitaciones', 'habitacion-216']];
 function pasos(n: number, extra = ''): string {
   return `<nav class="pasos glass ${extra}" aria-label="Pasos">${PASOS.map(([t, h], k) => {
     const cls = `paso ${k < n ? 'hecho' : k === n ? 'actual' : ''}`;
@@ -171,9 +171,25 @@ let loginChoice: 'estelar' | 'contratista' = S.rol ?? 'estelar';
 let loginEsp = S.espUser || 'arq';
 let loginNombre = S.nombreUser || '';
 
+function renderMapVisual(interactive: boolean): string {
+  const cities = [...new Set(HOTELES.map((h) => h.ciudad))];
+  return `<div class="colombia-map ${interactive ? '' : 'preview'}" aria-label="Mapa de hoteles en Colombia">
+    <div class="map-grid"></div><img class="colombia-shape" src="colombia.svg" alt="Contorno de Colombia">
+    ${cities.map((city) => {
+      const hotels = HOTELES.filter((h) => h.ciudad === city);
+      const lon = hotels.reduce((n, h) => n + h.lon, 0) / hotels.length;
+      const lat = hotels.reduce((n, h) => n + h.lat, 0) / hotels.length;
+      const x = (100 + (lon + 79) / 13 * 600) / 800 * 100;
+      const y = (30 + (12.6 - lat) / 16.9 * 640) / 700 * 100;
+      return `<button type="button" class="city-pin ${city === 'Bogotá' ? 'capital' : ''} ${hotels.some(h => h.id === hotelSel) ? 'selected' : ''}" style="left:${x.toFixed(2)}%;top:${y.toFixed(2)}%" data-act="hotel" data-v="${hotels.find(h => h.obra)?.id || hotels[0].id}" ${interactive ? '' : 'tabindex="-1"'} aria-label="${city}: ${hotels.length} hoteles"><i></i><span>${city} <b>${hotels.length}</b></span></button>`;
+    }).join('')}
+    <div class="map-axis">COLOMBIA · 11 CIUDADES / 22 HOTELES</div>
+  </div>`;
+}
+
 function renderLogin(): void {
-  const e = espDe(loginEsp);
-  $('layer').innerHTML = `<div class="login-gate live-3d">
+  $('layer').innerHTML = `<div class="login-gate live-map">
+    ${renderMapVisual(false)}
     <form class="login-box" id="fLogin" role="dialog" aria-label="Portal de Acceso BACO Obra">
       <div class="login-head">
         <div class="login-logos">
@@ -181,73 +197,39 @@ function renderLogin(): void {
           <span class="lsep"></span>
           <img src="logos/estelar.png" alt="Hoteles Estelar">
         </div>
-        <span class="pill ok" style="padding:6px 12px;font-size:12px"><span class="pulse" style="width:7px;height:7px;border-radius:50%;background:var(--ok);display:inline-block"></span> Escena 3D Revit + 3ds Max en vivo</span>
+        <span class="login-live"><i></i> COLOMBIA / EN VIVO</span>
       </div>
       <div>
-        <p class="eyebrow">TORRE SUITES · HOTEL LA FONTANA · PISO 2 PROTOTIPO</p>
-        <h1>Portal de Gestión <b>BIM, IA & Obra</b></h1>
-        <p class="sub">Al fondo está volando el mapa 3D hacia el Hotel La Fontana con el modelo de Revit, contexto 3ds Max y redes MEP. Elige tu perfil para entrar al entorno interactivo.</p>
+        <p class="eyebrow">BACO OBRA / PORTAL ESTELAR</p>
+        <h1>Tus hoteles, <b>en contexto.</b></h1>
+        <p class="sub">Explora los hoteles geolocalizados de Colombia. En La Fontana podrás seguir planeación, modelo BIM, novedades y habitaciones.</p>
       </div>
       <div class="role-cards" role="radiogroup" aria-label="Perfil de acceso">
         <button type="button" class="rcard ${loginChoice === 'estelar' ? 'on' : ''}" data-act="loginRol" data-v="estelar" aria-pressed="${loginChoice === 'estelar'}">
-          <div class="rtop"><span class="ric est">${ic('crown', 2)}</span><span class="rchk">${ic('check', 2.8)}</span></div>
-          <b>Hoteles Estelar / Gerencia</b>
-          <small>Building Plan 3D, inversión, facturación, curva S, asistente IA con fuentes y cortes de WhatsApp.</small>
-          <div class="rtags"><span>Building Plan 3D</span><span>Ejecutivo</span><span>Asistente IA</span><span>Honorarios</span></div>
+          <span class="login-role-icon">${ic('crown', 2)}</span><b>Grupo Estelar</b><small>Vista general de los hoteles y la obra.</small>
         </button>
         <button type="button" class="rcard ${loginChoice === 'contratista' ? 'on' : ''}" data-act="loginRol" data-v="contratista" aria-pressed="${loginChoice === 'contratista'}">
-          <div class="rtop"><span class="ric con">${ic('hard', 2)}</span><span class="rchk">${ic('check', 2.8)}</span></div>
-          <b>Contratistas / Especialistas</b>
-          <small>Visor 3D BIM por red (Revit + MEP), checklist semanal en campo, bitácora WhatsApp, 360° y códigos QR.</small>
-          <div class="rtags"><span>Redes MEP 3D</span><span>Checklist Campo</span><span>WhatsApp Bot</span><span>360° & QR</span></div>
+          <span class="login-role-icon">${ic('hard', 2)}</span><b>Equipo de obra</b><small>Mi especialidad, tareas y novedades.</small>
         </button>
       </div>
-      ${loginChoice === 'contratista' ? `
       <div class="login-sub">
-        <span class="label" style="margin-bottom:6px">Especialidad o frente asignado</span>
+        <span class="label" style="margin-bottom:8px">Especialidad con la que vas a trabajar</span>
         <div class="chiprow">${ESPECIALIDADES.map((x) => `<button type="button" class="chip" data-act="loginEsp" data-v="${x.id}" aria-pressed="${loginEsp === x.id}"><span class="sw" style="background:${x.c}"></span>${x.corto}</button>`).join('')}</div>
-      </div>` : ''}
+      </div>
       <div class="login-fields">
-        <div style="flex:1.4">
-          <label class="label" for="lNombre">Nombre o responsable <small style="font-weight:500;opacity:.7">(opcional)</small></label>
-          <input class="field" id="lNombre" value="${esc(loginNombre)}" placeholder="${loginChoice === 'estelar' ? 'Ej.: Dirección de Proyectos Estelar' : `Ej.: Ing. Residente · ${e.corto}`}">
-        </div>
-        <div style="flex:1">
-          <label class="label" for="lDestino">Al ingresar abrir</label>
-          <select class="field" id="lDestino">
-            <option value="obra" selected>Building Plan 3D · Vuelo a La Fontana (Revit + 3ds Max)</option>
-            <option value="bim-${loginChoice === 'contratista' ? loginEsp : 'coo'}">Redes BIM 3D · Piso 2 (${loginChoice === 'contratista' ? e.corto : 'Coordinación'})</option>
-            <option value="panel">Dashboard (${loginChoice === 'estelar' ? 'Ejecutivo Estelar' : 'Técnico de Obra'})</option>
-            <option value="ia">Asistente IA & Bitácora WhatsApp / 360°</option>
-            <option value="mapa">Mapa de Hoteles en Colombia</option>
-          </select>
-        </div>
+        <div><label class="label" for="lNombre">Tu nombre <small style="font-weight:500;opacity:.7">(opcional)</small></label><input class="field" id="lNombre" value="${esc(loginNombre)}" placeholder="Nombre o responsable"></div>
       </div>
       <div class="login-foot">
-        <button class="btn ${loginChoice === 'estelar' ? 'pri' : 'teal'} block cta" type="submit" style="padding:16px 22px;font-size:15.5px">
-          ${ic(loginChoice === 'estelar' ? 'crown' : 'hard', 2)}
-          <span>Entrar a la obra como <b>${loginChoice === 'estelar' ? 'Gerencia Estelar' : `Contratista · ${e.corto}`}</b></span>
-          <span class="go">${ic('arrowR', 2.6)}</span>
-        </button>
+        <button class="btn pri block cta" type="submit">Explorar mapa de hoteles <span class="go">${ic('arrowR', 2.6)}</span></button>
+        <small class="login-demo-note">Vista de demostración · el acceso con cuenta personal y check-in por QR se conectará a un registro compartido.</small>
       </div>
     </form>
+    <div class="login-map-caption"><span>01 / 05</span><b>Empieza en Colombia.</b><small>Selecciona La Fontana para recorrer el prototipo.</small></div>
   </div>`;
 }
 
 /* ---------------- rail + topbar ---------------- */
 function navActual(): [string, string, string][] {
-  if (S.rol === 'contratista') {
-    return [
-      ['obra', 'Building Plan 3D', 'obra'],
-      ['panel', 'Mi Frente', 'panel'],
-      ['ia', 'IA & WhatsApp', 'spark'],
-      ['avance', 'Avance semanal', 'avance'],
-      ['novedades', 'Novedades y QR', 'novedades'],
-      ['plan', 'Planeación', 'plan'],
-      ['entregables', 'Entregables', 'entregables'],
-      ['mapa', 'Hoteles Estelar', 'globe'],
-    ];
-  }
   return NAV;
 }
 
@@ -261,11 +243,11 @@ function renderChrome(): void {
   const uSub = isCon ? `Frente ${eUser.corto} · Piso 2` : 'Hoteles Estelar · Propietario';
   const uInic = isCon ? eUser.corto.slice(0, 2).toUpperCase() : 'HE';
   const uBg = isCon ? `linear-gradient(135deg,${eUser.c},#141A21)` : 'linear-gradient(135deg,#C59B27,#16202B)';
-  $('rail').innerHTML = `<button class="logo" data-act="cambiarRol" title="BACO Studio · Cambiar perfil de acceso">BS</button>` + nav.map(([k, l, i]) => `<a href="#${k}" ${base === k || (k === 'mapa' && base === '') || (k === 'novedades' && base === 'qr') ? 'aria-current="page"' : ''} aria-label="${l}">${ic(i)}<span class="lbl">${l}</span><span class="rtx">${l.split(' ')[0]}</span>${k === 'novedades' && ab ? `<span class="dot">${ab}</span>` : ''}</a>`).join('');
+  $('rail').innerHTML = `<button class="logo" data-act="cambiarRol" title="BACO Studio · Cambiar perfil de acceso"><img src="logos/baco.png" alt="BACO"></button>` + nav.map(([k, l, i]) => `<a href="#${k}" ${base === k || (k === 'mapa' && base === '') || (k === 'novedades' && base === 'qr') ? 'aria-current="page"' : ''} aria-label="${l}">${ic(i)}<span class="lbl">${l}</span><span class="rtx">${l.split(' ')[0]}</span>${k === 'novedades' && ab ? `<span class="dot">${ab}</span>` : ''}</a>`).join('');
   $('topbar').innerHTML = `
-    ${base !== 'mapa' && base !== '' ? `<a class="scene-back" href="${base === 'obra' ? '#mapa' : '#obra'}" aria-label="${base === 'obra' ? 'Volver al mapa' : 'Volver al modelo 3D'}">${ic('back')}<span>${base === 'obra' ? 'Mapa' : 'Modelo 3D'}</span></a>` : ''}
+    ${base !== 'mapa' && base !== '' ? `<a class="scene-back" href="${base === 'plan' || base === 'obra' ? '#mapa' : base === 'bim' ? '#plan' : base === 'novedades' ? '#bim-' + (S.espUser || 'arq') : '#novedades'}" aria-label="Volver al paso anterior">${ic('back')}<span>Volver</span></a>` : ''}
     <form class="search" id="fBuscar" role="search">${ic('search')}<input id="q" list="sugerencias" placeholder="Buscar hotel, habitación (214–225) o novedad…" aria-label="Buscar hotel o habitación"><datalist id="sugerencias">${HOTELES.map((h) => `<option value="${esc(h.nombre)}">`).join('')}${UBICACIONES.map(([, t]) => `<option value="${esc(t)}">`).join('')}</datalist><button class="circle" type="submit" aria-label="Buscar">${ic('filter')}</button></form>
-    ${base === 'mapa' || base === '' ? pasos(0) : base === 'obra' ? pasos(1) : '<div class="sp"></div>'}
+    ${pasos(base === 'mapa' || base === '' ? 0 : base === 'plan' || base === 'obra' ? 1 : base === 'bim' ? 2 : base === 'novedades' || base === 'qr' ? 3 : 4)}
     <button class="circle light" data-act="tema" aria-label="Cambiar tema" title="Cambiar modo claro / oscuro">${ic(oscuro() ? 'sun' : 'moon')}</button>
     <a class="circle light" href="#novedades" aria-label="${ab} novedades abiertas" style="position:relative">${ic('bell')}${ab ? '<i style="position:absolute;top:9px;right:10px;width:8px;height:8px;border-radius:50%;background:var(--coral);border:2px solid var(--card)"></i>' : ''}</a>
     <button class="user user-btn" data-act="cambiarRol" title="Cambiar perfil (Estelar / Contratista)">
@@ -282,21 +264,18 @@ function renderOv(): void {
   if (route === 'mapa' || route === '') {
     const ciudades = [...new Set(HOTELES.map((h) => h.ciudad))];
     const sel = hotelSel ? HOTELES.find((h) => h.id === hotelSel)! : null;
-    ov.innerHTML = `
+    ov.innerHTML = `${renderMapVisual(true)}
     <aside class="mapcard ${mapOpen ? 'open' : ''}">
-      <div class="glass"><h1>Hoteles <b>Estelar</b> en Colombia</h1>
+      <div class="glass"><p class="map-eyebrow">PORTAFOLIO / COLOMBIA</p><h1>Todos los hoteles.<br><b>Una sola vista.</b></h1>
         <div class="kchips"><div><b>${HOTELES.length}</b><small>hoteles</small></div><div><b>${ciudades.length}</b><small>ciudades</small></div><div><b style="color:var(--coral)">1</b><small>en remodelación</small></div></div></div>
-      <div class="glass feature"><div class="ph"><img src="img/suite.webp" alt="Render de una suite remodelada"><span class="tag"><i>${ic('build', 2)}</i>Remodelación Torre Suites</span></div>
-        <div class="body"><div><b style="font-size:17px">Estelar La Fontana · Bogotá</b><p class="muted" style="font-size:13.5px">Av. Calle 127 No. 15A-10 · piso 2 prototipo</p></div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <a class="btn coral cta" href="#obra" style="flex:1.2">${ic('obra')} Entrar en 3D <span class="go">${ic('arrowR', 2.6)}</span></a>
-          <a class="btn" href="#panel" style="flex:1" title="Abrir tablero de control sin esperar el mapa 3D">${ic('panel')} Ir al Panel</a>
-        </div>
+      <div class="glass feature"><div class="body"><span class="map-feature-tag"><i></i> PROTOTIPO ACTIVO</span><div><b style="font-size:20px">La Fontana</b><p class="muted" style="font-size:13.5px">Bogotá · Torre Suites · Piso 02</p></div><p class="map-feature-copy">Empieza por la planeación. Recorre después el modelo BIM, las novedades y cada habitación.</p>
+        <div class="map-feature-actions"><button class="btn" data-act="hotel" data-v="fontana">Ubicar en el mapa</button><a class="btn coral cta" href="#plan">Abrir planeación ${ic('arrowR', 2.2)}</a></div>
+        <div class="map-specialties"><span>ESPECIALIDAD ACTIVA · CAMBIAR AQUÍ</span><div>${ESPECIALIDADES.map(x=>`<button data-act="setEspUser" data-v="${x.id}" aria-pressed="${S.espUser===x.id}">${x.corto}</button>`).join('')}</div></div>
         <button class="chip" data-act="toggleLista" style="align-self:center">${mapOpen ? 'Ocultar' : 'Ver'} todos los hoteles</button></div></div>
       <div class="glass hlist">${ciudades.map((c) => `<span class="city">${c}</span>` + HOTELES.filter((h) => h.ciudad === c).map((h) => `<button class="hrow ${h.obra ? 'obra' : ''}" data-act="hotel" data-v="${h.id}" aria-pressed="${hotelSel === h.id}"><span class="pin">${ic(h.obra ? 'build' : 'pin', 2)}</span><span><b>${esc(h.nombre)}</b><small>${esc(h.dir)}</small></span></button>`).join('')).join('')}</div>
     </aside>
     ${sel ? `<aside class="hcard glass"><div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start"><div><p class="muted" style="font-size:12.5px;font-weight:800">${esc(sel.ciudad)}</p><h2 style="font-size:20px;font-weight:800">${esc(sel.nombre)}</h2><p class="muted" style="font-size:13.5px">${esc(sel.dir)}</p></div><button class="circle sm light" data-act="cerrarHotel" aria-label="Cerrar">${ic('x')}</button></div>
-      ${sel.obra ? `<span class="pill crit">Remodelación en curso</span><a class="btn coral block" href="#obra">${ic('obra')} Entrar al hotel</a>` : `<span class="pill neu">Sin obra activa</span><p class="muted" style="font-size:13px">Ubicación aproximada por dirección. Solo La Fontana tiene modelo 3D en esta etapa.</p><button class="btn block" data-act="colombia">${ic('globe')} Ver toda Colombia</button>`}</aside>` : ''}`;
+      ${sel.obra ? `<span class="pill crit">Remodelación en curso</span><a class="btn coral block" href="#plan">Abrir planeación ${ic('arrowR')}</a>` : `<span class="pill neu">Sin obra activa</span><p class="muted" style="font-size:13px">Ubicación aproximada por dirección. El prototipo interactivo está en La Fontana.</p><button class="btn block" data-act="colombia">${ic('globe')} Ver toda Colombia</button>`}</aside>` : ''}`;
   } else if (route === 'obra') {
     const ob = OBRA ? totalObra() : { prog: 0.30, real: 0.26, n: 120, hechas: 31 };
     const novs = listaNovedades();
@@ -528,11 +507,10 @@ async function go(): Promise<void> {
     $('rail').hidden = true; $('topbar').hidden = true; $('page').innerHTML = ''; $('page').className = ''; $('ov').innerHTML = '';
     bim?.cerrar(); $('bim').hidden = true;
     renderLogin();
-    // Carga el globo 3D y lanza la animación de vuelo hacia La Fontana (Revit + 3ds Max) en tiempo real detrás del login
     void cargarMapa().then((hlf) => {
       pausarMapa(false);
-      pines?.show(false);
-      void hlf.entrar();
+      pines?.show(true);
+      hlf.vistaColombia();
     });
     return;
   }
@@ -577,7 +555,7 @@ app.addEventListener('click', async (ev) => {
     case 'cerrarHotel': hotelSel = null; renderOv(); return;
     case 'colombia': hotelSel = null; renderOv(); (await cargarMapa()).vistaColombia(); return;
     case 'toggleLista': mapOpen = !mapOpen; renderOv(); return;
-    case 'elegirEsp': hojaEspecialidad(); return;
+    case 'elegirEsp': location.hash = 'bim-' + (S.espUser || 'coo'); return;
     case 'piso2': piso2Open = !piso2Open; W.HLF?.piso2(); renderOv(); return;
     case 'completo': piso2Open = false; W.HLF?.completo(); renderOv(); return;
     case 'irRuta': location.hash = v; return;
@@ -681,6 +659,7 @@ app.addEventListener('click', async (ev) => {
       save();
       anim = true;
       renderChrome();
+      if (route === 'mapa' || route === '') renderOv();
       renderPage();
       return;
     }
@@ -734,9 +713,9 @@ app.addEventListener('submit', async (ev) => {
   const f = ev.target as HTMLFormElement;
   if (f.id === 'fLogin') {
     const inp = (document.getElementById('lNombre') as HTMLInputElement | null)?.value.trim() ?? '';
-    const dest = (document.getElementById('lDestino') as HTMLSelectElement | null)?.value ?? 'panel';
+    const dest = 'mapa';
     S.rol = loginChoice;
-    S.espUser = loginChoice === 'contratista' ? loginEsp : 'coo';
+    S.espUser = loginEsp;
     S.nombreUser = inp;
     if (inp) { try { localStorage.setItem('baco-obra-quien', inp); } catch { /* */ } }
     filtroNov.esp = loginChoice === 'contratista' && loginEsp !== 'coo' ? loginEsp : 'todas';

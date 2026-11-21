@@ -6,7 +6,7 @@
   --ok:#1E9A62; --okSoft:#DCF3E7; --warn:#B9770E; --warnSoft:#FBEFD8; --crit:#D2433A; --critSoft:#FBE1DE;
   --glass:rgba(255,255,255,.78);
   --shadow:0 1px 2px rgba(22,32,43,.05),0 10px 28px -12px rgba(22,32,43,.18);
-  --f:"Urbanist",system-ui,-apple-system,"Segoe UI",sans-serif; --R:22px;
+  --f:"Archivo",Arial,sans-serif; --R:22px;
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]) #app{
   --bg:#0E141A; --bg2:#121A21; --card:#18212A; --soft:#1F2A34; --ink:#EEF3F7; --ink2:#C3CDD6; --muted:#8996A3; --line:#26323D;
@@ -639,6 +639,8 @@ body[data-modo="pais"] .dock,body[data-modo="pais"] #hint,body[data-modo="pais"]
 .scene-primary .ic{width:17px;height:17px}
 .scene-secondary{border:1px solid var(--line)!important;background:var(--soft)!important;color:var(--ink)!important}
 .scene-actions button:hover{filter:brightness(.93)}
+.map-eyebrow{font-size:10px;font-weight:900;letter-spacing:.16em;color:var(--teal);margin:0 0 10px}.mapcard:not(.open) .hlist{display:none}.mapcard .glass{border-radius:14px}.mapcard>.glass:first-child{background:rgba(250,252,249,.94);border:1px solid rgba(255,255,255,.8)}.mapcard h1{font-size:clamp(25px,2.3vw,34px);font-weight:600;letter-spacing:-.045em}.mapcard h1 b{color:#3e755f}.mapcard .feature{background:#f7f8f5;border:1px solid #dce4dc;box-shadow:0 18px 45px rgba(19,48,36,.14)}.mapcard .feature .body{padding:20px;gap:15px}.map-feature-tag{font-size:10px;font-weight:900;letter-spacing:.11em;color:#43785e;display:flex;align-items:center;gap:7px}.map-feature-tag i{width:7px;height:7px;background:#59b680;border-radius:50%;box-shadow:0 0 0 4px #59b68022}.map-feature-copy{font-size:12.5px;line-height:1.5;color:#6e7c71;margin:0}.map-feature-actions{display:grid;grid-template-columns:1fr 1.2fr;gap:7px}.map-feature-actions .btn{border-radius:8px;padding:11px;font-size:11px;box-shadow:none;white-space:nowrap}.map-feature-actions .btn:first-child{background:#e9efea}.map-specialties{border-top:1px solid #dfe7df;padding-top:13px}.map-specialties>span{font-size:9px;font-weight:900;letter-spacing:.1em;color:#87988a}.map-specialties>div{display:flex;gap:5px;flex-wrap:wrap;margin-top:9px}.map-specialties button{border:1px solid #dbe5dc;background:#fff;color:#56695b;border-radius:99px;padding:5px 8px;font-size:10px;font-weight:700;transition:.2s}.map-specialties button:hover{transform:translateY(-2px);border-color:#5a9573}.map-specialties button[aria-pressed=true]{background:#244335;color:#fff;border-color:#244335}.login-gate.live-map{justify-content:flex-start;align-items:center;padding:24px 4vw;background:linear-gradient(90deg,rgba(228,235,230,.89),rgba(228,235,230,.26) 58%,transparent 82%);backdrop-filter:none;-webkit-backdrop-filter:none;pointer-events:none}.login-gate.live-map .login-box{pointer-events:auto;margin:0;width:min(480px,100%);max-height:calc(100vh - 48px);overflow:auto;background:rgba(252,253,250,.95);border:1px solid #fff;border-radius:16px;padding:28px;gap:18px;box-shadow:0 25px 70px rgba(20,52,37,.17)}.login-gate.live-map .login-logos{padding:0;box-shadow:none;background:none}.login-gate.live-map .login-logos img{height:30px}.login-live{font-size:9px;letter-spacing:.1em;font-weight:900;color:#579072;white-space:nowrap}.login-live i{display:inline-block;width:7px;height:7px;background:#6abd90;border-radius:50%;margin-right:4px}.login-gate.live-map h1{font-size:clamp(29px,3vw,40px);letter-spacing:-.045em;font-weight:700}.login-gate.live-map h1 b{color:#477c61;background:none}.login-gate.live-map .sub{font-size:13px;line-height:1.5}.login-gate.live-map .role-cards{gap:8px}.login-gate.live-map .rcard{border:1px solid #dde6dd;border-radius:10px;padding:11px;gap:5px;background:#f8faf6}.login-gate.live-map .rcard.on{border-color:#5c9671;box-shadow:inset 0 0 0 1px #5c9671;background:#eef6ee}.login-gate.live-map .rcard b{font-size:12px}.login-gate.live-map .rcard small{font-size:10px}.login-role-icon{color:#4b8668}.login-role-icon .ic{width:19px;height:19px}.login-gate.live-map .login-sub{border-radius:10px;padding:12px;background:#f1f6ef}.login-gate.live-map .login-sub .chiprow{gap:5px}.login-gate.live-map .login-sub .chip{font-size:10px;padding:6px 8px}.login-gate.live-map .login-fields>div{width:100%;min-width:0}.login-gate.live-map .login-fields .field{border-radius:9px}.login-gate.live-map .cta{border-radius:9px;min-height:45px;justify-content:space-between;font-size:13px;box-shadow:none}.login-map-caption{position:absolute;right:5vw;bottom:6vh;color:#213c31;display:flex;flex-direction:column;gap:3px;text-shadow:0 1px 12px #fff;animation:up .6s both}.login-map-caption span{font-size:10px;letter-spacing:.14em;font-weight:900}.login-map-caption b{font-size:22px;letter-spacing:-.03em}.login-map-caption small{font-size:12px}.map-cloud{position:fixed;inset:0;z-index:29;display:grid;place-items:center;background:#e8eee9;color:#426a53;font-size:11px;font-weight:800;letter-spacing:.08em;pointer-events:none}.map-cloud>span{position:absolute;bottom:9vh}.cloud-points{width:min(42vw,420px);height:min(58vh,520px);background-image:radial-gradient(circle,#567e68 1px,transparent 1.4px);background-size:8px 8px;clip-path:polygon(42% 0%,66% 10%,73% 21%,89% 26%,82% 42%,97% 53%,78% 65%,68% 78%,61% 100%,43% 93%,31% 70%,17% 62%,10% 43%,24% 31%,22% 14%);filter:drop-shadow(0 16px 28px #6f9b7f66);animation:cloud-drift 4s ease-in-out infinite alternate}.cloud-points:after{content:'';position:absolute;inset:0;background:linear-gradient(130deg,transparent 20%,#d5e7da88 50%,transparent 80%);animation:cloud-sweep 2.4s linear infinite}@keyframes cloud-drift{to{transform:translateY(-12px) scale(1.03);opacity:.65}}@keyframes cloud-sweep{to{transform:translateX(80%)}}@media(max-width:720px){.login-gate.live-map{align-items:flex-end;padding:12px;background:linear-gradient(0deg,rgba(229,237,231,.95),transparent 95%)}.login-gate.live-map .login-box{max-height:68vh;padding:18px;gap:12px;width:100%}.login-map-caption{top:3vh;right:16px;bottom:auto}.login-map-caption b{font-size:16px}.mapcard .map-specialties{display:none}}@media(prefers-reduced-motion:reduce){.cloud-points,.cloud-points:after{animation:none}}
+.login-demo-note{display:block;margin-top:9px;color:#839488;font-size:10px;line-height:1.4}
 @media (max-width:1040px){
   .scene-heading{max-width:300px}
   .scene-panel{width:280px}
@@ -663,3 +665,61 @@ body[data-modo="pais"] .dock,body[data-modo="pais"] #hint,body[data-modo="pais"]
   .scene-primary{padding:0 10px}
   .bim-back span{display:none}
 }
+/* Identidad visual HLF-BIM: colores, tipografías y logos. */
+#app{--bg:#f7f4ef;--bg2:#fbf9f5;--card:#fffefa;--soft:#f2eee7;--ink:#16181b;--ink2:#353c45;--muted:#7a746b;--line:#ded9cf;--teal:#0e3064;--teal2:#315c91;--tealSoft:#e6ecf4;--coral:#b59535;--coralSoft:#f4ecd2;--black:#0e3064;--glass:rgba(247,244,239,.9);--shadow:0 2px 7px #0e30640b,0 20px 45px -25px #0e30643d;--f:'Archivo',Arial,sans-serif}
+#app h1,#app h2,#app h3,.proto h1,.proto h2{font-family:'Space Grotesk',Arial,sans-serif}
+#app .eyebrow,#app .label,#app .map-eyebrow,#app .map-feature-tag,#app .map-specialties>span,#app .login-live,#app .login-map-caption>span{font-family:'Inter Tight',Arial,sans-serif}
+#app .rail .logo{background:#0e3064;border-radius:12px;overflow:hidden;padding:6px}
+#app .rail .logo img{max-width:100%;max-height:100%;object-fit:contain}
+#app .mapcard>.glass:first-child,#app .mapcard .feature{background:#f7f4ef;border-color:#ded9cf}
+#app .mapcard h1 b,#app .login-gate.live-map h1 b{color:#0e3064}
+#app .map-eyebrow,#app .map-feature-tag,#app .login-live,#app .login-box .eyebrow{color:#b59535}
+#app .map-feature-tag i,#app .login-live i{background:#b59535;box-shadow:0 0 0 4px #b5953522}
+#app .map-feature-copy,#app .login-gate.live-map .sub{color:#7a746b}
+#app .map-feature-actions .btn:first-child{background:#ebe7df}
+#app .map-specialties{border-color:#ded9cf}
+#app .map-specialties>span{color:#7a746b}
+#app .map-specialties button{border-color:#d8d1c5;color:#0e3064}
+#app .map-specialties button:hover{border-color:#b59535}
+#app .map-specialties button[aria-pressed=true]{background:#0e3064;color:#fff;border-color:#0e3064}
+#app .login-gate.live-map{background:linear-gradient(90deg,rgba(247,244,239,.92),rgba(247,244,239,.31) 58%,transparent 82%)}
+#app .login-gate.live-map .login-box{background:rgba(247,244,239,.97);border-color:#fff;box-shadow:0 25px 70px #0e30642c}
+#app .login-gate.live-map .rcard{background:#fcfaf6;border-color:#ded9cf}
+#app .login-gate.live-map .rcard.on{border-color:#b59535;box-shadow:inset 0 0 0 1px #b59535;background:#f8f1dc}
+#app .login-role-icon,#app .login-map-caption{color:#0e3064}
+#app .login-gate.live-map .login-sub{background:#eee9df}
+#app .login-demo-note{color:#7a746b}
+#app .map-cloud{background:#f7f4ef;color:#0e3064}
+#app .cloud-points{background-image:radial-gradient(circle,#b59535 1px,transparent 1.4px)}
+#app .cloud-points:after{background:linear-gradient(130deg,transparent 20%,#e8ddb188 50%,transparent 80%)}
+@media(max-width:720px){#app .login-gate.live-map{background:linear-gradient(0deg,rgba(247,244,239,.97),transparent 95%)}}
+/* Mapa geográfico local: visible incluso sin claves externas de Cesium. */
+body[data-modo="pais"] #cesiumContainer canvas{visibility:hidden}
+body[data-modo="pais"] #cesiumContainer{background:radial-gradient(circle at 73% 42%,#fffefa,#e8e4dc 75%)}
+.colombia-map{position:fixed;z-index:30;width:min(63vw,820px);aspect-ratio:8/7;right:1.8vw;top:52%;transform:translateY(-50%);pointer-events:none;animation:map-arrive .7s ease-out both}
+.colombia-shape{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 16px 26px #0e306419)}
+.map-grid{position:absolute;inset:6%;background-image:linear-gradient(#0e30640a 1px,transparent 1px),linear-gradient(90deg,#0e30640a 1px,transparent 1px);background-size:32px 32px;mask-image:radial-gradient(ellipse,#000 35%,transparent 75%)}
+.colombia-map .city-pin{position:absolute;z-index:2;pointer-events:auto;transform:translate(-50%,-50%);display:flex;align-items:center;gap:5px;min-width:0;padding:4px 7px 4px 5px;border:1px solid #0e306439;border-radius:100px;background:#fffefaed;color:#0e3064;box-shadow:0 4px 13px #0e306420;font-family:'Inter Tight',Arial,sans-serif;font-size:10px;font-weight:700;white-space:nowrap;transition:transform .22s,box-shadow .22s,background .22s}
+.colombia-map .city-pin i{display:block;width:9px;height:9px;flex:none;border-radius:50%;background:#0e3064;box-shadow:0 0 0 3px #0e30641a}
+.colombia-map .city-pin b{font-weight:600;color:#7a746b}
+.colombia-map .city-pin:hover,.colombia-map .city-pin.selected{transform:translate(-50%,-50%) scale(1.12);box-shadow:0 7px 22px #0e30643a;z-index:3}
+.colombia-map .city-pin.capital{background:#0e3064;color:#fff;border-color:#0e3064;z-index:4}
+.colombia-map .city-pin.capital i{background:#b59535;box-shadow:0 0 0 3px #b5953544}
+.colombia-map .city-pin.capital b{color:#e4d7ac}
+.colombia-map .map-axis{position:absolute;right:8%;bottom:1%;font:600 10px 'Inter Tight',Arial,sans-serif;letter-spacing:.14em;color:#7a746b}
+.login-gate.live-map .colombia-map{z-index:0;right:2vw}
+.login-gate.live-map .colombia-map .city-pin{pointer-events:none}
+.login-gate.live-map .login-box,.login-gate.live-map .login-map-caption{position:relative;z-index:1}
+@keyframes map-arrive{from{opacity:0;transform:translateY(-47%) scale(.97)}to{opacity:1;transform:translateY(-50%) scale(1)}}
+@media(max-width:800px){.colombia-map{width:95vw;right:-24vw;top:44%}.colombia-map .city-pin{font-size:8px;padding:3px 5px}.login-gate.live-map .colombia-map{right:-24vw;top:38%;opacity:.75}.colombia-map .map-axis{display:none}}
+#app .rail .logo{background:#fffefa;border:1px solid #e5ded1}
+#app[data-view="mapa"] .topbar .search{display:none}
+#app .pasos{overflow:visible;gap:1px;padding:5px 7px;max-width:none}
+#app .paso{font-size:11px;gap:5px;padding:5px 7px 5px 5px}
+#app .paso .pnum{width:22px;height:22px;font-size:10px}
+#app .pchev .ic{width:13px;height:13px}
+.colombia-map{width:min(52vw,700px);right:4vw;top:54%}
+.login-gate.live-map .colombia-map{width:min(52vw,700px);right:4vw;top:54%}
+@media(max-width:800px){.colombia-map,.login-gate.live-map .colombia-map{width:90vw;right:-20vw;top:39%}#app .pasos{overflow-x:auto;max-width:100%}}
+.login-gate.live-map .login-map-caption{position:absolute;z-index:1;right:5vw;bottom:5vh;top:auto;text-align:right;pointer-events:none}
+@media(max-width:800px){.login-gate.live-map .login-map-caption{top:3vh;right:16px;bottom:auto}}
