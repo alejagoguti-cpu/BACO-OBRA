@@ -1,0 +1,11 @@
+import puppeteer from 'puppeteer-core';
+const b = await puppeteer.launch({ executablePath: 'C:/Program Files/Google/Chrome/Application/chrome.exe', headless: 'new', protocolTimeout: 300000, args: ['--no-sandbox', '--use-angle=d3d11', '--window-size=1600,900'] });
+const p = await b.newPage(); await p.setViewport({ width: 1600, height: 900 });
+const errs = []; p.on('pageerror', (e) => errs.push(e.message)); p.on('console', (m) => { if (m.type() === 'error') errs.push(m.text().slice(0, 200)); });
+await p.goto('http://127.0.0.1:4321/BACO-OBRA/?demo#bim-coo', { waitUntil: 'networkidle2', timeout: 120000 }); await new Promise((r) => setTimeout(r, 10000));
+const r = await p.evaluate(() => { const bt = [...document.querySelectorAll('[data-act="bimEsp"]')].find((x) => /El[eé]ctrica/.test(x.textContent)); const q = bt.getBoundingClientRect(); const x = q.left + q.width / 2, y = q.top + q.height / 2; return { x, y, top: document.elementFromPoint(x, y)?.outerHTML.slice(0, 120) }; });
+console.log(JSON.stringify(r));
+await p.mouse.click(r.x, r.y); await new Promise((r) => setTimeout(r, 4000));
+console.log(await p.evaluate(() => location.hash + ' ' + [...document.querySelectorAll('[data-act="bimEsp"][aria-pressed="true"]')].map((x) => x.textContent).join(',')));
+await p.screenshot({ path: 'build/cap/esp.jpg', type: 'jpeg', quality: 70 });
+console.log(errs.join('\n') || 'sin errores'); await b.close();

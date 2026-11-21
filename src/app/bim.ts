@@ -81,7 +81,7 @@ export function crearBim(host: HTMLElement): Bim {
   const centro = new THREE.Vector3(0, 4.5, 0);
   let listo: Promise<void> | null = null;
   let esp = 'coo';
-  let fantasma = true;
+  let fantasma = false; let pinsEsp = '';
   let anim = 0;
   let hoverGrupo: string | null = null;
 
@@ -135,6 +135,7 @@ export function crearBim(host: HTMLElement): Bim {
 
   function aplicar(): void {
     const e = ESPECIALIDADES.find((x) => x.id === esp)!;
+    if (pinsEsp !== esp) { pinsEsp = esp; setPins(ultimos); }
     const todos = e.grupos.includes('*');
     for (const [g, ms] of mallas) {
       const activo = (todos || e.grupos.includes(g)) && !ocultos.has(g);
@@ -168,10 +169,13 @@ export function crearBim(host: HTMLElement): Bim {
     x.fillStyle = '#fff'; x.beginPath(); x.arc(48, 44, 14, 0, Math.PI * 2); x.fill();
     const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; texCache.set(color, t); return t;
   }
+  let ultimos: Novedad[] = [];
   function setPins(ns: Novedad[]): void {
     pinGroup.clear();
+    ultimos = ns; const eSel = ESPECIALIDADES.find((x) => x.id === esp); const todas = !eSel || eSel.grupos.includes('*');
     for (const n of ns) {
       if (!n.pos) continue;
+      if (!todas && n.esp !== esp) continue; // solo las novedades de la especialidad elegida
       const e = ESPECIALIDADES.find((x) => x.id === n.esp);
       const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: pinTex(n.estado === 'Cerrada' ? '#8a96a3' : e?.c ?? '#1FA58C'), depthTest: false }));
       sp.center.set(0.5, 0.06); sp.scale.set(1.3, 1.7, 1);

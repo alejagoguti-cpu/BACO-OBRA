@@ -114,7 +114,7 @@ function seleccionarHotel(id: string): void {
 /* ---------------- visor BIM (three.js, carga diferida) ---------------- */
 let bim: Bim | null = null;
 let bimEsp = 'coo';
-let corte = true, fantasma = true;
+let corte = true, fantasma = false;
 let guiaVista = true;
 
 /* ---------------- guía de pasos con flechas ---------------- */
