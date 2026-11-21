@@ -12,6 +12,7 @@ import './shell.css';
 import { iniciarAuth, perfil, salir, alCambiarSesion, ROL_TXT } from './auth';
 import { mostrarAcceso, cerrarAcceso, mostrarAprobacion, mostrarNuevaClave } from './login';
 import { conectarPresencia, desconectarPresencia, alCambiarPresencia, informarUbicacion, type Presente } from './presence';
+import { iniciarNovedades, alCambiarNovedades, detenerNovedades } from './novedades';
 import { montarWorkspace, abrirWorkspace, ocultarWorkspace, parseRuta, migas } from '../twin/workspace';
 
 interface HLFApi { entrar(): Promise<void>; vistaColombia(d?: number): void; volarA(lon: number, lat: number, alt?: number, dur?: number): void; viewer: { useDefaultRenderLoop: boolean }; readonly modo: 'pais' | 'sitio'; piso2(): void; completo(): void }
@@ -31,10 +32,10 @@ const $ = (id: string) => document.getElementById(id)!;
 
 const NAV: [string, string, string][] = [
   ['mapa', 'Hoteles Colombia', 'globe'], ['fontana', 'Gemelo La Fontana', 'cube'], ['plan', 'Planeación', 'plan'], ['bim', 'Modelo BIM', 'obra'],
-  ['novedades', 'Novedades y QR', 'novedades'], ['habitacion-216', 'Habitación 216', 'eye'],
+  ['novedades', 'Novedades', 'pin'], ['qr', 'Códigos QR', 'qr'], ['habitacion-216', 'Habitación 216', 'eye'],
   ['panel', 'Resumen', 'panel'], ['ia', 'Asistente', 'spark'],
 ];
-const NAV_SEC: [string, string[]][] = [['Exploración espacial', ['mapa', 'fontana', 'bim', 'habitacion-216']], ['Gestión de obra', ['plan', 'novedades', 'panel', 'ia']]];
+const NAV_SEC: [string, string[]][] = [['Exploración espacial', ['mapa', 'fontana', 'bim', 'habitacion-216']], ['Gestión de obra', ['novedades', 'plan', 'panel', 'ia', 'qr']]];
 let compacta = false; try { compacta = localStorage.getItem('baco-side') === 'compacta'; } catch { /* */ }
 document.body.classList.toggle('side-compact', compacta);
 let presentes: Presente[] = [];
@@ -198,7 +199,7 @@ function renderLogin(): void {
 async function trasLogin(): Promise<void> {
   cerrarAcceso();
   sincronizarPerfil();
-  if (perfil) { conectarPresencia(perfil); toast(`Sesión iniciada · ${perfil.nombre}`); }
+  if (perfil) { conectarPresencia(perfil); void iniciarNovedades(); toast(`Sesión iniciada · ${perfil.nombre}`); }
   $('layer').innerHTML = '';
   let pend = ''; try { pend = sessionStorage.getItem('baco-qr-pendiente') || ''; sessionStorage.removeItem('baco-qr-pendiente'); } catch { /* */ }
   const actual = location.hash.slice(1);
@@ -219,11 +220,12 @@ function seccionDe(r: string): string {
   if (r.startsWith('hoteles') || r === '') return 'mapa';
   if (r === 'habitacion-216') return 'habitacion-216';
   const base = r.split('-')[0];
-  if (base === 'qr') return 'novedades';
+  if (base === 'qr') return 'qr';
+  if (r.startsWith('novedades')) return 'novedades';
   return base;
 }
 function migasActuales(): [string, string][] {
-  if (route.startsWith('fontana')) return migas();
+  if (parseRuta(route)) return migas();
   if (route === 'hoteles/bogota') return [['Hoteles', '#mapa'], ['Bogotá', '#hoteles/bogota']];
   if (route === 'hoteles/la-fontana') return [['Hoteles', '#mapa'], ['Bogotá', '#hoteles/bogota'], ['La Fontana', '#hoteles/la-fontana']];
   const n = NAV.find(([k]) => k === seccionDe(route));
@@ -264,7 +266,7 @@ function renderChrome(): void {
     <a class="circle light" href="#novedades" aria-label="${ab} novedades abiertas" style="position:relative">${ic('bell')}${ab ? '<i style="position:absolute;top:9px;right:10px;width:8px;height:8px;border-radius:50%;background:var(--coral);border:2px solid var(--card)"></i>' : ''}</a>
     <div class="who" id="who" aria-label="Personas conectadas"></div>`;
   pintarWho();
-  if (!route.startsWith('fontana')) informarUbicacion({ vista: NAV.find((x) => x[0] === sec)?.[1] ?? 'Hoteles', lugar: '', elemento: '' });
+  if (!parseRuta(route)) informarUbicacion({ vista: NAV.find((x) => x[0] === sec)?.[1] ?? 'Hoteles', lugar: '', elemento: '' });
 }
 
 /* ---------------- capa sobre el mapa ---------------- */
@@ -515,6 +517,7 @@ function vNovedadesPiso2(): string {
   </div>`;
 }
 function renderPage(): void {
+  if (parseRuta(route)) return; // el área espacial del gemelo es dueña de esta ruta
   const page = $('page');
   const base = route.split('-')[0];
   if (!PAGES.includes(base)) { page.innerHTML = ''; page.className = ''; return; }
@@ -732,7 +735,7 @@ app.addEventListener('click', async (ev) => {
       return;
     }
     case 'cambiarRol': case 'salir': {
-      await desconectarPresencia(); await salir(); S.rol = null; save();
+      await desconectarPresencia(); await detenerNovedades(); await salir(); S.rol = null; save();
       document.body.classList.remove('con-sesion'); location.hash = 'mapa'; void go();
       return;
     }
@@ -930,5 +933,6 @@ montarWorkspace($('twin'));
 addEventListener('twin:ruta', () => { route = decodeURIComponent(location.hash.slice(1)); renderChrome(); });
 alCambiarPresencia((l) => { presentes = l; pintarWho(); });
 alCambiarSesion((ev) => { if (ev === 'PASSWORD_RECOVERY') location.hash = 'nueva-clave'; });
-void iniciarAuth().then((p) => { if (p) { sincronizarPerfil(); conectarPresencia(p); } void go(); });
+void iniciarAuth().then((p) => { if (p) { sincronizarPerfil(); conectarPresencia(p); void iniciarNovedades(); } void go(); });
+alCambiarNovedades(() => { if (!perfil) return; renderChrome(); bim?.setPins(listaNovedades()); if (PAGES.includes(route.split('-')[0]) && !parseRuta(route)) { renderPage(); } });
 

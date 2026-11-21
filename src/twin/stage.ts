@@ -55,7 +55,19 @@ export interface Stage {
   resize(): void;
   pausar(p: boolean): void;
   dispose(): void;
+  /* ---- módulo Novedades ---- */
+  readonly vista3d: boolean;
+  setVista3D(on: boolean): Promise<void>;
+  /** activa la selección de un punto en el piso 2; el callback recibe coordenadas del marco twin (sin la separación de la explosión) */
+  elegirPunto(cb: ((r: PuntoElegido | null) => void) | null): void;
+  proyectar(pos: [number, number, number]): { x: number; y: number; visible: boolean };
+  enfocarPunto(pos: [number, number, number], escala?: number): Promise<void>;
+  habitacionEn(x: number, z: number): string | null;
+  /** resalta una habitación sin disparar onHabitacion */
+  resaltarHabitacion(num: string | null): void;
+  onCamara: (() => void) | null;
 }
+export interface PuntoElegido { pos: [number, number, number]; habitacion: string | null; categoria: string | null }
 
 export function crearStage(host: HTMLElement): Stage {
   const canvas = document.createElement('canvas'); canvas.className = 'tw-canvas'; host.prepend(canvas);
@@ -262,6 +274,7 @@ export function crearStage(host: HTMLElement): Stage {
   /* ---------------- estado animable (lo mueve la timeline) ---------------- */
   const st = { sep: 0, otros: 1, mep: 0, corte: 0, salas: 0, ctx: 1, sel: 0, bordes: 0 };
   let modo: Modo = 'edificio';
+  let vista3d = false;
   let edificioSel = false;
   let hoverEd = false;
   let hoverHab: string | null = null;
@@ -438,6 +451,8 @@ export function crearStage(host: HTMLElement): Stage {
       const h = pick(e, pickEdificio);
       if (doble && h) { volarA(h.point, rig.H * 0.55); return; }
       api.seleccionarEdificio(!!h);
+    } else if (modo === 'planta' && puntoCb) {
+      const r = elegirEn(e); const cb = puntoCb; puntoCb = null; canvas.style.cursor = ''; cb(r);
     } else if (modo === 'planta') {
       const h = pick(e, [...salaMesh.values()]);
       const num = (h?.object.userData.hab as string) ?? null;
@@ -448,6 +463,32 @@ export function crearStage(host: HTMLElement): Stage {
   canvas.addEventListener('pointerdown', onDown);
   canvas.addEventListener('pointermove', onMove);
   canvas.addEventListener('pointerup', onUp);
+
+  /* ---- selección de punto (Nueva novedad) ---- */
+  let puntoCb: ((r: PuntoElegido | null) => void) | null = null;
+  const plano = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+  function dentro(poly: [number, number][], x: number, z: number): boolean {
+    let r = false;
+    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+      const [xi, zi] = poly[i], [xj, zj] = poly[j];
+      if ((zi > z) !== (zj > z) && x < ((xj - xi) * (z - zi)) / (zj - zi) + xi) r = !r;
+    }
+    return r;
+  }
+  function habitacionEn(x: number, z: number): string | null { return habitaciones.find((h) => dentro(h.contorno, x, z))?.numero ?? null; }
+  function elegirEn(e: PointerEvent): PuntoElegido | null {
+    if (!p2) return null;
+    const off = p2.grupo.position.y;
+    const objs: THREE.Object3D[] = [];
+    p2.grupo.children.forEach((o) => { const m = o as THREE.Mesh; if (m.isMesh && m.visible && (m.material as THREE.Material).visible) objs.push(m); });
+    mepGrupo.children.forEach((o) => { if ((o as THREE.Mesh).isMesh && mepGrupo.visible) objs.push(o); });
+    const h = pick(e, objs);
+    let pt: THREE.Vector3 | null = h ? h.point.clone() : null;
+    if (!pt) { plano.constant = -(off + (p2.info.elev ?? 3)); pt = ray.ray.intersectPlane(plano, new THREE.Vector3()); }
+    if (!pt) return null;
+    const pos: [number, number, number] = [+pt.x.toFixed(3), +(pt.y - off).toFixed(3), +pt.z.toFixed(3)];
+    return { pos, habitacion: habitacionEn(pos[0], pos[2]), categoria: (h?.object.userData.cat as string) ?? null };
+  }
 
   let vuelo: gsap.core.Tween | null = null;
   function volarA(p: THREE.Vector3, H: number, extra: Partial<typeof rig> = {}): Promise<void> {
@@ -499,7 +540,7 @@ export function crearStage(host: HTMLElement): Stage {
       tl.timeScale(1).play();
     },
     volverAEdificio() {
-      if (modo === 'planta') { salirPlanta(); modo = 'bim'; api.onModo?.(modo); }
+      if (modo === 'planta') { if (vista3d) { vista3d = false; } salirPlanta(); modo = 'bim'; api.onModo?.(modo); }
       rigActivo = true; controls.enabled = false;
       api.seleccionarHabitacion(null);
       tl.timeScale(1.6).reverse();
@@ -541,6 +582,42 @@ export function crearStage(host: HTMLElement): Stage {
       return { cats: e.cats.filter((c) => (porCat.get(c) ?? []).some((m) => m.parent === p2?.grupo || m.parent === mepGrupo)), elementos: hayEl ? el : null, tris };
     },
     resize,
+    get vista3d() { return vista3d; },
+    onCamara: null,
+    async setVista3D(on) {
+      if (modo !== 'planta' || on === vista3d) return;
+      vista3d = on;
+      if (on) {
+        const H = (orto.top - orto.bottom) / orto.zoom;
+        rig.tx = controls.target.x; rig.ty = controls.target.y; rig.tz = controls.target.z; rig.H = H; rig.pol = 0; rig.fov = 6;
+        salirPlanta(); rigActivo = true; aplicarRig();
+        await new Promise<void>((res) => { vuelo?.kill(); vuelo = gsap.to(rig, { pol: 0.9, fov: 35, H: H * 0.9, duration: 1.2, ease: 'power2.inOut', onComplete: () => { rigActivo = false; res(); } }); });
+        controls.enableRotate = true; controls.maxPolarAngle = Math.PI * 0.47;
+      } else {
+        rigDesdeCamara(); rigActivo = true;
+        const az = Math.round(rig.az / (Math.PI / 2)) * (Math.PI / 2);
+        await new Promise<void>((res) => { vuelo?.kill(); vuelo = gsap.to(rig, { pol: 0, az, fov: 6, duration: 1.1, ease: 'power2.inOut', onComplete: () => res() }); });
+        entrarPlanta();
+      }
+    },
+    elegirPunto(cb) { puntoCb = cb; canvas.style.cursor = cb ? 'crosshair' : ''; },
+    proyectar(pos) {
+      const off = p2 ? p2.grupo.position.y : 0;
+      tmp.set(pos[0], pos[1] + off, pos[2]).project(cam as THREE.PerspectiveCamera);
+      const w = canvas.clientWidth, h = canvas.clientHeight;
+      return { x: (tmp.x * 0.5 + 0.5) * w, y: (-tmp.y * 0.5 + 0.5) * h, visible: tmp.z < 1 && tmp.z > -1 && !pausado };
+    },
+    async enfocarPunto(pos, escala = 3.2) {
+      const off = p2 ? p2.grupo.position.y : 0;
+      if (cam === orto) {
+        await new Promise<void>((res) => {
+          gsap.to(controls.target, { x: pos[0], z: pos[2], duration: 0.9, ease: 'power2.inOut', onUpdate: () => { orto.position.set(controls.target.x, orto.position.y, controls.target.z); } });
+          gsap.to(orto, { zoom: Math.min(controls.maxZoom, escala), duration: 0.9, ease: 'power2.inOut', onUpdate: () => orto.updateProjectionMatrix(), onComplete: res });
+        });
+      } else await volarA(new THREE.Vector3(pos[0], pos[1] + off, pos[2]), 14);
+    },
+    habitacionEn,
+    resaltarHabitacion(num) { habSel = num; pintarSalas(); },
     pausar(p) { pausado = p; labels.domElement.style.display = p ? 'none' : ''; },
     dispose() {
       vivo = false; cancelAnimationFrame(raf); ro.disconnect(); tl.kill(); vuelo?.kill(); controls.dispose();

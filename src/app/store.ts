@@ -2,6 +2,9 @@
    - Preferencias y marcas: localStorage (por navegador).
    - Novedades: si hay Supabase configurado (SUPA abajo) se comparten entre todos; si no, quedan en este navegador. */
 import { NOVEDADES_SEED, PROVEEDORES_SEED, type Novedad, type Proveedor } from './data';
+import { perfil } from './auth';
+import { novedades as novCompartidas, crearNovedad, actualizarNov, nombreDe, type Nov, type TipoNov, type EstadoNov } from './novedades';
+import { bimATwin, twinABim } from './marcos';
 
 /** Para compartir novedades entre todos: URL y clave pública (publishable) del proyecto Supabase. */
 export const SUPA = { url: '', key: '' };
@@ -48,7 +51,20 @@ const saveNov = () => {
     try { localStorage.setItem(KEY + '-nov', JSON.stringify(novedades.map((n, i) => (i > 20 ? { ...n, foto: undefined } : n)))); } catch { /* */ }
   }
 };
-export const listaNovedades = () => novedades;
+/* Con sesión, la fuente es Supabase (novedades.ts) y las páginas anteriores la leen adaptada a su formato;
+   sin sesión (formulario abierto desde un QR de obra) se conserva el comportamiento local anterior. */
+const ESP_A_TWIN: Record<string, string> = { arq: 'arq', est: 'est', hid: 'hid', ele: 'ele', rci: 'rci', coo: 'arq' };
+const ESP_DE_TWIN: Record<string, string> = { arq: 'arq', est: 'est', ele: 'ele', hid: 'hid', des: 'hid', rci: 'rci', hvac: 'coo', mob: 'arq', aca: 'arq' };
+const EST_VIEJO: Record<EstadoNov, Novedad['estado']> = { pendiente: 'Abierta', en_proceso: 'En revisión', resuelta: 'Cerrada', cerrada: 'Cerrada' };
+const EST_NUEVO: Record<Novedad['estado'], EstadoNov> = { Abierta: 'pendiente', 'En revisión': 'en_proceso', Cerrada: 'cerrada' };
+const TIPO_VIEJO: Record<TipoNov, string> = { nueva: 'Nueva', retraso: 'Retraso', imprevisto: 'Imprevisto', avance: 'Avance', incidencia: 'Interferencia' };
+export const enLinea = () => !!perfil && perfil.id !== 'dev';
+export function aVieja(n: Nov): Novedad {
+  return { id: n.codigo, ts: new Date(n.created_at).getTime(), loc: n.habitacion ? 'HAB-' + n.habitacion : 'COR', esp: ESP_DE_TWIN[n.especialidad] ?? 'arq', tipo: TIPO_VIEJO[n.tipo],
+    prio: (n.prioridad[0].toUpperCase() + n.prioridad.slice(1)) as Novedad['prio'], txt: n.titulo, quien: n.responsable || nombreDe(n.created_by), estado: EST_VIEJO[n.estado],
+    pos: n.pos ? twinABim(n.pos) : undefined };
+}
+export const listaNovedades = (): Novedad[] => (enLinea() ? novCompartidas().map(aVieja) : novedades);
 
 const hdr = () => ({ apikey: SUPA.key, Authorization: 'Bearer ' + SUPA.key, 'Content-Type': 'application/json' });
 export async function cargarNovedades(): Promise<Novedad[]> {
@@ -64,12 +80,25 @@ export function nuevoId(): string {
   return 'N-' + String(n).padStart(3, '0') + (compartido() ? '-' + Math.random().toString(36).slice(2, 5) : '');
 }
 export async function agregarNovedad(n: Novedad): Promise<void> {
+  if (enLinea()) {
+    const tipo: TipoNov = n.tipo === 'Avance' ? 'avance' : n.tipo === 'Retraso' ? 'retraso' : 'incidencia';
+    const hab = n.loc.startsWith('HAB-') ? n.loc.slice(4) : null;
+    const r = await crearNovedad({ titulo: n.txt.slice(0, 160), descripcion: n.loc.startsWith('HAB-') ? '' : 'Ubicación: ' + n.loc, tipo, especialidad: ESP_A_TWIN[n.esp] ?? 'arq',
+      prioridad: n.prio.toLowerCase() as Nov['prioridad'], estado: 'pendiente', responsable: null, fecha_prevista: null, habitacion: hab, element_id: null, pos: n.pos ? bimATwin(n.pos) : null });
+    if (r.error) throw new Error(r.error);
+    return;
+  }
   novedades.unshift(n); saveNov();
   if (compartido()) {
     try { await fetch(`${SUPA.url}/rest/v1/novedades`, { method: 'POST', headers: { ...hdr(), Prefer: 'return=minimal' }, body: JSON.stringify(n) }); } catch { /* queda local */ }
   }
 }
 export async function actualizarNovedad(id: string, cambios: Partial<Novedad>): Promise<void> {
+  if (enLinea()) {
+    const n = novCompartidas().find((x) => x.codigo === id); if (!n) return;
+    if (cambios.estado) { const err = await actualizarNov(n.id, { estado: EST_NUEVO[cambios.estado] }); if (err) throw new Error(err); }
+    return;
+  }
   const n = novedades.find((x) => x.id === id); if (!n) return;
   Object.assign(n, cambios); saveNov();
   if (compartido() && !n.ej) {

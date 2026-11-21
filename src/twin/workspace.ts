@@ -11,13 +11,16 @@ import { informarUbicacion, alCambiarPresencia, type Presente } from '../app/pre
 import { OBRA, cargarObra, porHab } from '../app/obra';
 import { listaNovedades } from '../app/store';
 import { esc, ic, toast } from '../app/ui';
+import { activarNovedades, desactivarNovedades, novedadesActivo, habitacionTocada, render as renderNov, onClickNov, onChangeNov, onSubmitNov } from './nov-ui';
 
 export type RutaTwin =
   | { v: 'edificio' } | { v: 'bim' } | { v: 'planta'; hab?: string }
-  | { v: 'gemelo'; hab: string; el?: string };
+  | { v: 'gemelo'; hab: string; el?: string }
+  | { v: 'novedades'; sub: string[] };
 
 export function parseRuta(h: string): RutaTwin | null {
   const p = h.split('/');
+  if (p[0] === 'novedades' && (p.length === 1 || ['hab', 'n', 'nueva'].includes(p[1]))) return { v: 'novedades', sub: p.slice(1) };
   if (p[0] !== 'fontana') return null;
   if (p.length === 1) return { v: 'edificio' };
   if (p[1] === 'bim') return { v: 'bim' };
@@ -46,6 +49,7 @@ export function montarWorkspace(el: HTMLElement): void {
     <div class="tw-ui" id="twUi"></div>`;
   host.addEventListener('click', onClick);
   host.addEventListener('input', onInput);
+  host.addEventListener('change', (ev) => { void onChangeNov(ev); });
   host.addEventListener('submit', onSubmit);
   alCambiarPresencia((l) => { presentes = l; pintarCoincidencias(); });
 }
@@ -60,6 +64,7 @@ function asegurarStage(): Stage {
   };
   stage.onEdificio = (s) => { edificioSel = s; informarUbicacion({ vista: 'Hotel La Fontana', lugar: s ? 'Torre Suites' : '', elemento: '' }); render(); };
   stage.onHabitacion = (n) => {
+    if (novedadesActivo()) { habitacionTocada(n); return; }
     habSel = n;
     const h = n ? `#fontana/piso-2/${n}` : '#fontana/piso-2';
     if (location.hash !== h) history.replaceState(null, '', h);
@@ -80,8 +85,16 @@ export async function abrirWorkspace(r: RutaTwin): Promise<void> {
   const s = asegurarStage();
   s.pausar(r.v === 'gemelo');
   await s.listo;
+  if (r.v !== 'novedades' && novedadesActivo()) desactivarNovedades();
   if (r.v === 'gemelo') { await abrirGemelo(r.hab, r.el); render(); return; }
   cerrarGemelo();
+  if (r.v === 'novedades') {
+    if (s.modo === 'edificio') s.irAPlantaDirecto();
+    else if (s.modo === 'bim') { s.tl.progress(1); }
+    s.resaltarHabitacion(null);
+    activarNovedades(s, $('#twUi')!, r.sub);
+    return;
+  }
   if (r.v === 'edificio') {
     informarUbicacion({ vista: 'Hotel La Fontana', lugar: edificioSel ? 'Torre Suites' : '', elemento: '' });
     if (s.modo !== 'edificio' && previa.v !== 'edificio') s.volverAEdificio();
@@ -98,7 +111,7 @@ export async function abrirWorkspace(r: RutaTwin): Promise<void> {
   }
   render();
 }
-export function ocultarWorkspace(): void { if (!host) return; host.hidden = true; stage?.pausar(true); cerrarGemelo(); }
+export function ocultarWorkspace(): void { if (!host) return; host.hidden = true; stage?.pausar(true); cerrarGemelo(); if (novedadesActivo()) desactivarNovedades(); }
 
 /* ---------------- gemelo interior ---------------- */
 async function abrirGemelo(hab: string, elId?: string): Promise<void> {
@@ -140,6 +153,7 @@ function cerrarGemelo(): void {
 /* ---------------- interfaz ---------------- */
 function render(): void {
   const ui = $('#twUi'); if (!ui) return;
+  if (ruta.v === 'novedades') { renderNov(); return; }
   const s = stage;
   const modo = s?.modo ?? 'edificio';
   let html = '';
@@ -230,6 +244,7 @@ function uiHabitacion(num: string): string {
     <div class="tw-sec" id="twHabEstado"><span class="tw-lbl">Estado de remodelación</span><p class="tw-muted">Cargando programación…</p></div>
     <div class="tw-sec" id="twHabResp"><span class="tw-lbl">Responsables asignados</span><p class="tw-muted">Consultando…</p></div>
     <div class="tw-sec" id="twHabInc"><span class="tw-lbl">Incidencias</span><p class="tw-muted">Consultando…</p></div>
+    <div class="tw-row"><a class="tw-btn" href="#novedades/nueva/${esc(num)}">${ic('plus', 1.8)} Registrar novedad</a><a class="tw-btn" href="#novedades/hab/${esc(num)}">${ic('pin', 1.8)} Ver novedades</a></div>
     ${cfg ? `<a class="tw-btn pri lg" href="#fontana/${esc(num)}/gemelo">${ic('cube', 2)} Entrar al gemelo digital</a>` : '<p class="tw-pend">Gemelo interior: modelo pendiente de vinculación</p>'}
     <p class="tw-coinc" id="twCoinc" hidden></p>
   </aside>`;
@@ -331,6 +346,7 @@ function pintarCoincidencias(): void {
 
 /* ---------------- eventos ---------------- */
 async function onClick(ev: Event): Promise<void> {
+  if (await onClickNov(ev)) return;
   const b = (ev.target as HTMLElement).closest<HTMLElement>('[data-tw]'); if (!b) return;
   const a = b.dataset.tw!, v = b.dataset.v ?? '';
   const s = stage;
@@ -365,6 +381,7 @@ function onInput(ev: Event): void {
   if (t.id === 'twExpo') room?.setExposicion(+t.value / 100);
 }
 async function onSubmit(ev: Event): Promise<void> {
+  if (await onSubmitNov(ev)) return;
   const f = ev.target as HTMLFormElement;
   if (f.id !== 'twFormEl' && f.id !== 'twFormCom') return;
   ev.preventDefault();
@@ -386,6 +403,7 @@ async function onSubmit(ev: Event): Promise<void> {
 /** migas de pan para la cabecera (app.ts) */
 export function migas(): [string, string][] {
   const m: [string, string][] = [['Hoteles', '#mapa'], ['Bogotá', '#hoteles/bogota'], ['La Fontana', '#hoteles/la-fontana'], ['Torre Suites', '#fontana']];
+  if (ruta.v === 'novedades') m.push(['Piso 2', '#fontana/piso-2'], ['Novedades', '#novedades']);
   if (ruta.v === 'bim') m.push(['BIM', '#fontana/bim']);
   if (ruta.v === 'planta' || ruta.v === 'gemelo') m.push(['BIM', '#fontana/bim'], ['Piso 2', '#fontana/piso-2']);
   if (ruta.v === 'planta' && ruta.hab) m.push([`Habitación ${ruta.hab}`, `#fontana/piso-2/${ruta.hab}`]);
