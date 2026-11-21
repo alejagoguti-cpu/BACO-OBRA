@@ -13,7 +13,7 @@ const key = (clave: string, original: string) => clave + '::' + original;
 export const configuradorActivo = () => !!cfg;
 export async function abrirConfigurador(host: HTMLElement, uiHost: HTMLElement, h: string, url: string): Promise<void> {
   cerrarConfigurador();
-  hab = h; ui = uiHost; cfg = crearConfigurador(host, url);
+  hab = h; ui = uiHost; cfg = crearConfigurador(host, url, h);
   cfg.onSeleccion = (c) => { ranura = c ? (cfg!.piezas().find((p) => p.clave === c)?.ranuras[0] ?? '') : ''; if (c) { const p = cfg!.piezas().find((x) => x.clave === c); if (p) cat = p.categoria; } renderConfig(); };
   renderConfig();
   await cfg.listo;
@@ -83,6 +83,7 @@ function panelMateriales(p: Pieza): string {
   const g = grupoMat || mats.find((m) => m.nombre === actual)?.grupo || grupos[0];
   return `<aside class="cf-mat">
     <div class="tw-phead"><div><span class="tw-over">${esc(p.categoria)}${p.codigo ? ' · ' + esc(p.codigo) : ''}${p.cantidad > 1 ? ` · ${p.cantidad} unidades` : ''}</span><h3>${esc(p.nombre)}</h3>${p.medidas ? `<small class="tw-muted">${esc(p.medidas)}</small>` : ''}</div><button class="tw-ico sm" data-cf="cerrar" aria-label="Cerrar">${ic('x')}</button></div>
+    ${p.matriz ? fichaMatriz(p) : ''}
     ${p.ranuras.length > 1 ? `<span class="tw-lbl">Parte de la pieza</span><div class="cf-ranuras">${p.ranuras.map((x) => `<button data-cf="ranura" data-v="${esc(x)}" aria-pressed="${x === r}"><i data-mmini="${esc(cfg!.materialActual(p.clave, x))}"></i>${esc(etq(cfg!.materialActual(p.clave, x)))}</button>`).join('')}</div>` : ''}
     <span class="tw-lbl">Material actual</span>
     <div class="cf-actual"><i data-mmini="${esc(actual)}"></i><span><b>${esc(etq(actual))}</b>${actual !== r ? `<small>original: ${esc(etq(r))}</small>` : '<small>material del proyecto</small>'}</span>${actual !== r ? `<button class="tw-btn ghost" data-cf="restaurar">${ic('reset', 1.6)} Original</button>` : ''}</div>
@@ -90,6 +91,10 @@ function panelMateriales(p: Pieza): string {
     <div class="cf-mats">${mats.filter((m) => m.grupo === g).map((m) => `<button class="${m.nombre === actual ? 'on' : ''}" data-cf="material" data-v="${esc(m.nombre)}" title="${esc(m.etiqueta)}"><i data-mmini="${esc(m.nombre)}"></i><span>${esc(m.etiqueta)}</span></button>`).join('')}</div>
     <p class="tw-note">${puedeEditar(perfil) ? 'El cambio se guarda para todo el equipo y se aplica a todas las unidades de esta pieza.' : 'Puedes probar materiales; guardarlos es de gestión (admin, Estelar o BIM).'}</p>
   </aside>`;
+}
+function fichaMatriz(p: Pieza): string {
+  const m = p.matriz!; const fila = (k: string, v: string) => v ? `<div><dt>${k}</dt><dd>${esc(v)}</dd></div>` : '';
+  return `<dl class="cf-ficha"><span class="cf-tag">${esc(m.codigo)}</span><small>Matriz de amoblamiento · Habitación Twin V2</small>${fila('Referencia', m.referencia)}${fila('Proveedor', m.proveedor)}${fila('Medidas', m.medidas)}${fila('Acabado', m.material)}${fila('Cantidad', m.cantidad)}</dl>`;
 }
 const etq = (n: string) => cfg?.materiales().find((m) => m.nombre === n)?.etiqueta ?? n;
 async function pintarMiniaturas(): Promise<void> {

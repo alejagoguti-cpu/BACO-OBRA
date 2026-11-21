@@ -5,7 +5,7 @@ const errs = []; p.on('pageerror', (e) => errs.push(e.message)); p.on('console',
 const w = (ms) => new Promise((r) => setTimeout(r, ms));
 await p.goto('http://127.0.0.1:4321/BACO-OBRA/?demo#fontana/216/gemelo', { waitUntil: 'networkidle2', timeout: 120000 }); await w(14000);
 await p.screenshot({ path: 'build/cap/f1-config.jpg', type: 'jpeg', quality: 80 });
-await p.evaluate(() => { const c = [...document.querySelectorAll('.cf-card')].find((x) => /cama/i.test(x.textContent)); c?.click(); }); await w(3500);
+await p.evaluate(() => { const c = [...document.querySelectorAll('.cf-card')].find((x) => /mesa de noche/i.test(x.textContent)); c?.click(); }); await w(3500);
 await p.screenshot({ path: 'build/cap/f2-cama.jpg', type: 'jpeg', quality: 80 });
 await p.evaluate(() => { const g = [...document.querySelectorAll('[data-cf="grupo"]')].find((x) => /telas/i.test(x.textContent)); g?.click(); }); await w(1500);
 await p.evaluate(() => { const m = document.querySelectorAll('.cf-mats button')[2]; m?.click(); }); await w(2500);

@@ -314,3 +314,8 @@
 /* línea de tiempo compacta */
 .nv-tl{height:128px;padding:8px 12px}
 .nv-day{padding:6px 8px;gap:3px}
+.cf-ficha{margin:0;display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;padding:10px 12px;border:1px solid var(--tw-line);border-radius:12px;background:rgba(201,169,110,.08)}
+.cf-ficha .cf-tag{grid-column:1/-1;justify-self:start;font:800 12px var(--f,sans-serif);letter-spacing:.08em;color:#fff;background:#0E3064;border-radius:6px;padding:3px 8px}
+.cf-ficha>small{grid-column:1/-1;color:var(--tw-muted);font-size:10.5px;margin-top:-2px}
+.cf-ficha div{min-width:0}.cf-ficha dt{font:700 9.5px var(--f,sans-serif);letter-spacing:.08em;text-transform:uppercase;color:var(--tw-muted)}
+.cf-ficha dd{margin:1px 0 0;font-size:11.5px;font-weight:600;color:var(--tw-ink);overflow-wrap:anywhere}

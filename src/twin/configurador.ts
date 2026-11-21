@@ -14,15 +14,25 @@ import { OutlinePass } from 'three/examples/jsm/postprocessing/OutlinePass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import gsap from 'gsap';
 import { draco } from './draco';
+import MATRIZ from './matriz-twin.json';
+
+export interface FilaMatriz { codigo: string; item: string; cantidad: string; referencia: string; proveedor: string; medidas: string; material: string }
+/** pieza del modelo → fila de la matriz de amoblamiento (Habitación Twin, V2) */
+const REGLAS: [RegExp, string][] = [
+  [/mesa noche|nightstand/i, 'MA-01'], [/lampara de pie|lp-02/i, 'LP-02'], [/minibar|me-02/i, 'ME-02'], [/closet|cl-01/i, 'ME-01'],
+  [/espejo cuerpo|esp-02/i, 'ME-05'], [/cabecero/i, 'ME-07'], [/tapete/i, 'TA-01'], [/poltrona/i, 'PO-01'], [/escritorio/i, 'M-01'],
+  [/panel tv/i, 'ME-03'], [/maletero/i, 'ME-09'], [/mesa auxiliar/i, 'MA-02'], [/l[aá]mpara de lectura/i, 'LP-03'],
+];
+const filaDe = (nodo: string): FilaMatriz | undefined => { const t = nodo.replace(/_/g, ' '); const r = REGLAS.find(([re]) => re.test(t)); return r ? (MATRIZ as FilaMatriz[]).find((x) => x.codigo === r[1]) : undefined; };
 
 export type CategoriaPieza = 'Muebles' | 'Baño' | 'Iluminación' | 'Textiles' | 'Pisos' | 'Muros' | 'Puertas y ventanas' | 'Otros';
 export const CATEGORIAS: CategoriaPieza[] = ['Muebles', 'Baño', 'Iluminación', 'Textiles', 'Pisos', 'Muros', 'Puertas y ventanas', 'Otros'];
 export type GrupoMaterial = 'Maderas' | 'Telas y cueros' | 'Piedras y cerámicas' | 'Metales' | 'Pinturas y muros' | 'Vidrios y espejos' | 'Otros';
 export const GRUPOS_MAT: GrupoMaterial[] = ['Maderas', 'Telas y cueros', 'Piedras y cerámicas', 'Metales', 'Pinturas y muros', 'Vidrios y espejos', 'Otros'];
-export interface Pieza { clave: string; nombre: string; codigo: string; medidas: string; categoria: CategoriaPieza; cantidad: number; ranuras: string[]; ids: string[] }
+export interface Pieza { clave: string; nombre: string; codigo: string; medidas: string; categoria: CategoriaPieza; cantidad: number; ranuras: string[]; ids: string[]; matriz?: FilaMatriz }
 export interface MaterialInfo { nombre: string; etiqueta: string; grupo: GrupoMaterial }
 
-const limpiar = (s: string) => s.replace(/\s*\[\d+\]\s*$/, '').replace(/\s+/g, ' ').trim();
+const limpiar = (s: string) => s.replace(/\s*\[\d+\]\s*$/, '').replace(/_+\d{5,}$/, '').replace(/^_+/, '').replace(/\s+/g, ' ').trim();
 function describir(nodo: string): { nombre: string; codigo: string; medidas: string; categoria: CategoriaPieza } {
   const base = limpiar(nodo).replace(/[ _]/g, ' ').replace(/\s+\d{5,}$/, '').replace(/^hlf[-_ ]?mob\s+/i, '').trim();
   const medidas = (/(\d+\s*[x×]\s*\d+(?:\s*[x×]\s*\d+)?\s*mm)/i.exec(base)?.[1] ?? '').replace(/\s+/g, ' ');
@@ -70,7 +80,7 @@ export interface Configurador {
   dispose(): void;
 }
 
-export function crearConfigurador(host: HTMLElement, url: string): Configurador {
+export function crearConfigurador(host: HTMLElement, url: string, hab = ''): Configurador {
   const canvas = document.createElement('canvas'); canvas.className = 'tw-canvas'; host.prepend(canvas);
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
   renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
@@ -119,9 +129,32 @@ export function crearConfigurador(host: HTMLElement, url: string): Configurador 
     const caja = new THREE.Box3().setFromObject(gltf.scene); const c0 = caja.getCenter(new THREE.Vector3());
     gltf.scene.position.sub(new THREE.Vector3(c0.x, caja.min.y, c0.z));
     scene.add(gltf.scene); gltf.scene.updateMatrixWorld(true);
+    // solo la habitación: la exportación trae parte de la vecina (p. ej. ducha 217). Se corta en el muro que
+    // comparten (a mitad de camino entre las piezas gemelas "… 216" / "… 217") y se ocultan las piezas del otro lado.
+    let corte: THREE.Plane | null = null;
+    if (hab) {
+      const cajas = new Map<string, THREE.Box3>();
+      gltf.scene.traverse((o) => { const m = /^(.*?)\s(2\d\d)$/.exec(limpiar(o.name).replace(/_/g, ' ').replace(/\s+\d{5,}$/, '').trim()); if (m) { const k = m[1] + '|' + m[2]; if (!cajas.has(k)) cajas.set(k, new THREE.Box3().setFromObject(o)); } });
+      for (const [k, b] of cajas) {
+        const [base, num] = k.split('|'); if (num !== hab) continue;
+        const otra = [...cajas].find(([k2]) => k2.startsWith(base + '|') && !k2.endsWith('|' + hab)); if (!otra) continue;
+        const a = b.getCenter(new THREE.Vector3()), o = otra[1].getCenter(new THREE.Vector3());
+        const n = new THREE.Vector3(a.x - o.x, 0, a.z - o.z).normalize(); const mid = a.clone().add(o).multiplyScalar(0.5);
+        // se conserva el lado donde está el mobiliario de la habitación (las piezas HLF-MOB)
+        let pos = 0, neg = 0; const bb = new THREE.Box3(), cc = new THREE.Vector3();
+        gltf.scene.traverse((q) => { if (!/mob/i.test(q.name) || !(q as THREE.Mesh).isMesh) return; bb.setFromObject(q).getCenter(cc); if (n.dot(cc.clone().sub(mid)) > 0) pos++; else neg++; });
+        if (neg > pos) n.negate();
+        corte = new THREE.Plane(n, -n.dot(mid) + 0.14); break;
+      }
+      if (corte) {
+        renderer.clippingPlanes = [corte];
+        const tmpB = new THREE.Box3();
+        gltf.scene.traverse((o) => { const m = o as THREE.Mesh; if (!m.isMesh) return; tmpB.setFromObject(m); const c = tmpB.getCenter(new THREE.Vector3()); if (corte!.distanceToPoint(c) < 0 && corte!.distanceToPoint(tmpB.max) < 0.05 && corte!.distanceToPoint(tmpB.min) < 0.05) m.visible = false; });
+      }
+    }
     const grupos = new Map<string, { nodos: string[]; mallas: THREE.Mesh[]; objs: THREE.Object3D[] }>();
     gltf.scene.traverse((o) => {
-      const m = o as THREE.Mesh; if (!m.isMesh) return;
+      const m = o as THREE.Mesh; if (!m.isMesh || !m.visible) return;
       const nodo: THREE.Object3D = m.parent && m.parent !== gltf.scene && (m.parent as THREE.Group).isGroup ? m.parent : m;
       const nombre = nodo.name || m.name;
       const clave = limpiar(nombre);
@@ -141,11 +174,13 @@ export function crearConfigurador(host: HTMLElement, url: string): Configurador 
     for (const [clave, g] of grupos) {
       const d = describir(clave);
       const ranuras = [...new Set(g.mallas.flatMap((m) => (Array.isArray(m.material) ? m.material : [m.material]).map((x) => x.name).filter(Boolean)))];
-      piezas.push({ clave, ...d, cantidad: g.nodos.length, ranuras, ids: g.nodos });
+      const matriz = filaDe(clave);
+      if (matriz) { d.codigo = matriz.codigo; d.nombre = matriz.item + (/cabecero/i.test(clave) && !/^cabecero/i.test(d.nombre) ? ' · ' + d.nombre.replace(/^Muro\s+cabecero[- ]?/i, '').replace(/-\d+$/, '').replace(/-/g, ' ').toLowerCase() : ''); if (!d.medidas) d.medidas = matriz.medidas; d.categoria = matriz.codigo.startsWith('LP') ? 'Iluminación' : matriz.codigo === 'TA-01' ? 'Textiles' : 'Muebles'; }
+      piezas.push({ clave, ...d, cantidad: g.nodos.length, ranuras, ids: g.nodos, matriz });
       mallasPorPieza.set(clave, g.mallas); primerNodo.set(clave, g.objs[0]);
     }
-    piezas.sort((a, b) => CATEGORIAS.indexOf(a.categoria) - CATEGORIAS.indexOf(b.categoria) || a.nombre.localeCompare(b.nombre));
-    const cb = new THREE.Box3().setFromObject(gltf.scene); cb.getCenter(centro); const s = cb.getSize(new THREE.Vector3()); radio = Math.max(s.x, s.z) / 2;
+    piezas.sort((a, b) => CATEGORIAS.indexOf(a.categoria) - CATEGORIAS.indexOf(b.categoria) || (a.matriz ? 0 : 1) - (b.matriz ? 0 : 1) || (a.codigo || 'zz').localeCompare(b.codigo || 'zz') || a.nombre.localeCompare(b.nombre));
+    const cb = new THREE.Box3(); pick.forEach((m) => { const bb = new THREE.Box3().setFromObject(m); if (!corte || corte.distanceToPoint(bb.getCenter(new THREE.Vector3())) > 0) cb.union(bb); }); cb.getCenter(centro); const s = cb.getSize(new THREE.Vector3()); radio = Math.max(s.x, s.z) / 2;
     sol.position.set(centro.x - 6, 9, centro.z + 5); sol.target.position.copy(centro);
     Object.assign(sol.shadow.camera, { left: -radio * 1.3, right: radio * 1.3, top: radio * 1.3, bottom: -radio * 1.3, near: 1, far: 30 });
     resize();
@@ -153,7 +188,7 @@ export function crearConfigurador(host: HTMLElement, url: string): Configurador 
     persp.position.set(centro.x, radio * 6, centro.z + 0.01); controls.target.copy(centro); controls.update();
     await new Promise<void>((res) => gsap.to(persp.position, { ...poseAxo(), duration: 1.6, ease: 'power3.inOut', onUpdate: () => persp.lookAt(controls.target), onComplete: res }));
   })();
-  const poseAxo = () => ({ x: centro.x - radio * 1.9, y: radio * 2.6, z: centro.z + radio * 2.3 });
+  const poseAxo = () => ({ x: centro.x - radio * 2.3, y: radio * 3.1, z: centro.z + radio * 2.8 });
 
   // selección en el modelo
   const ray = new THREE.Raycaster(); const ptr = new THREE.Vector2();

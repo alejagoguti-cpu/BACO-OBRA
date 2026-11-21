@@ -1,0 +1,137 @@
+[
+ {
+  "codigo": "MA-01",
+  "item": "Mesa de Noche",
+  "cantidad": "2",
+  "referencia": "Fabriación Nacional",
+  "proveedor": "Studio Inc o similar",
+  "medidas": "ø 40cm x H: 60cm",
+  "material": "Piedra Sinterizada : Ref Phantom Grey Altea"
+ },
+ {
+  "codigo": "LP-01",
+  "item": "Lampara de Cabecero",
+  "cantidad": "2",
+  "referencia": "Aplique H LED 17.8W 2700K ON-OFF Oro mate 813lm",
+  "proveedor": "LEDS C4 - Euroluce",
+  "medidas": "ø 26cm x H: Variable",
+  "material": ""
+ },
+ {
+  "codigo": "LP-02",
+  "item": "Lampara de Pie",
+  "cantidad": "1",
+  "referencia": "Pie de salón Organic E27 15W Negro 771lm",
+  "proveedor": "LEDS C4 - Euroluce",
+  "medidas": "ø 23cm x H: 135cm",
+  "material": ""
+ },
+ {
+  "codigo": "LP-03",
+  "item": "Lámpara de Lectura",
+  "cantidad": "2",
+  "referencia": "Gamma Mini 05-6428-DN-DN",
+  "proveedor": "LEDS C4 - Euroluce",
+  "medidas": "ø 7cm x 9,5cm X 10,8cm",
+  "material": ""
+ },
+ {
+  "codigo": "MA-02",
+  "item": "Mesa Auxiliar",
+  "cantidad": "1",
+  "referencia": "Mesa Auxiliar",
+  "proveedor": "Studio Inc o similar",
+  "medidas": "ø 40cm x H: 50cm",
+  "material": ""
+ },
+ {
+  "codigo": "TA-01",
+  "item": "Tapete Rectangular Camas",
+  "cantidad": "1",
+  "referencia": "Tapete Custome",
+  "proveedor": "CB Hali",
+  "medidas": "420 x 150 cm",
+  "material": ""
+ },
+ {
+  "codigo": "PO-01",
+  "item": "Poltrona",
+  "cantidad": "2*",
+  "referencia": "Musa Fura",
+  "proveedor": "Ofipartes",
+  "medidas": "Altura asiento: 48.5 –53.1 cm Altura total: 80 – 84.6 cm Profundidad total: 50 cm Ancho total de la silla: 60 cm",
+  "material": "Casual 36- Flint - Dekor Group"
+ },
+ {
+  "codigo": "M-01",
+  "item": "Mesa Escritorio",
+  "cantidad": "1",
+  "referencia": "Mesa Comdor/Escitorio",
+  "proveedor": "Studio Inc o similar",
+  "medidas": "ø 80cm x H: 75cm",
+  "material": "Piedra Sinterizada : Ref Phantom Grey Altea"
+ },
+ {
+  "codigo": "ME-01",
+  "item": "Closet",
+  "cantidad": "1",
+  "referencia": "Closet Habitación King",
+  "proveedor": "Fabricación Nacional",
+  "medidas": "1,20m x 0,60m x H:2,05m",
+  "material": "Panel melaminico Ref. Sikuani de Primadera"
+ },
+ {
+  "codigo": "ME-02",
+  "item": "Mini Bar",
+  "cantidad": "1",
+  "referencia": "Mini Bar",
+  "proveedor": "Fabricación Nacional",
+  "medidas": "0,80m x 0,60m x H:1,00m",
+  "material": "Piedra Sinterizada Ref. Altea Phantom Dark Grey. + Panel melaminico Ref. Sikuani de Primadera"
+ },
+ {
+  "codigo": "ME-03",
+  "item": "Panel TV",
+  "cantidad": "1",
+  "referencia": "Panel TV",
+  "proveedor": "Fabricación Nacional",
+  "medidas": "1,34m x 0,10m x H:2,05m",
+  "material": "Panel melaminico Ref. Sikuani de Primadera"
+ },
+ {
+  "codigo": "ME-04",
+  "item": "Entrepaños Bar",
+  "cantidad": "1",
+  "referencia": "Entrepaños Bar",
+  "proveedor": "Fabricación Nacional",
+  "medidas": "0,60m x 0,23m",
+  "material": "Panel melaminico Ref. Sikuani de Primadera"
+ },
+ {
+  "codigo": "ME-05",
+  "item": "Espejo Cuerpo Completo",
+  "cantidad": "1",
+  "referencia": "Espejo",
+  "proveedor": "Fabricación Nacional",
+  "medidas": "0,60m x 1,70m",
+  "material": ""
+ },
+ {
+  "codigo": "ME-07",
+  "item": "Cabecero King",
+  "cantidad": "1",
+  "referencia": "Cabecero King",
+  "proveedor": "Fabricación Nacional",
+  "medidas": "4,60m x 0,09m x H: 1,20m & 0,76m",
+  "material": "Papel de colagura Lismore Ref. 1097,28 de Vescom + Panel melaminico Ref. Sikuani de Primadera + Tapizado 50mm Ref. Trailblazer 32-Marble de Dekor Group."
+ },
+ {
+  "codigo": "ME-09",
+  "item": "Maletero Flexible",
+  "cantidad": "1",
+  "referencia": "Maletero Flexible",
+  "proveedor": "Fabricación Nacional",
+  "medidas": "0,40m x 0,50m",
+  "material": ""
+ }
+]
