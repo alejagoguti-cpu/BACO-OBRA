@@ -5,8 +5,8 @@ import './app.css';
 import { ESPECIALIDADES, HOTELES, TIPOS, UBICACIONES, type Novedad } from './data';
 import { S, save, reset, listaNovedades, cargarNovedades, agregarNovedad, actualizarNovedad, nuevoId, comprimirFoto } from './store';
 import { countUp, esc, ic, toast } from './ui';
-import { OBRA, cargarObra, marcar, porEsp, porHab, realAct, fechaCorta, total as totalObra } from './obra';
-import { T, espDe, ubic, vAvance, vEntregables, vHonorarios, vNovedades, vPanel, vPlan, vProveedores, vQR, vAsistente, responderIA, WA_LOG_SEED, type WaEntry, rowNov } from './pages';
+import { OBRA, cargarObra, marcar, porEsp, porHab, porFrente, realAct, fechaCorta, total as totalObra } from './obra';
+import { T, espDe, ubic, vAvance, vEntregables, vHonorarios, vNovedades, vPanel, vProveedores, vQR, vAsistente, responderIA, WA_LOG_SEED, type WaEntry, rowNov } from './pages';
 import type { Bim } from './bim';
 
 interface HLFApi { entrar(): Promise<void>; vistaColombia(d?: number): void; volarA(lon: number, lat: number, alt?: number, dur?: number): void; viewer: { useDefaultRenderLoop: boolean }; readonly modo: 'pais' | 'sitio'; piso2(): void; completo(): void }
@@ -462,11 +462,35 @@ function abrirHabDetalle(h: string): void {
 }
 
 /* ---------------- render de rutas ---------------- */
+function vPlanPiso2(): string {
+  const fronts = OBRA?.frentes ?? [
+    { frente: 'Frente 1', secuencia: '214 → 215 → 216 → 217', n: 4, comp: '', area: 0, ini: '', fin: '', criterio: '' },
+    { frente: 'Frente 2', secuencia: '225 → 218 → 219 → 220', n: 4, comp: '', area: 0, ini: '', fin: '', criterio: '' },
+    { frente: 'Frente 3', secuencia: '223 → 222 → 224 → 221', n: 4, comp: '', area: 0, ini: '', fin: '', criterio: '' },
+  ];
+  const overall = OBRA ? totalObra() : { prog: .30, real: .26, n: 0, hechas: 0 };
+  const pct = (n: number) => Math.round(n * 100);
+  const room = (number: string): string => {
+    const p = porHab(number);
+    const ref = OBRA?.habitaciones.find(h => h.hab === number);
+    const assigned = [...new Set((OBRA?.actividades ?? []).filter(a => a.hab === number).map(a => a.quien).filter(Boolean))].slice(0, 2);
+    return `<button class="plan-room ${number === '216' ? 'demo' : ''}" data-act="habDetalle" data-v="${number}" aria-label="Habitación ${number}, avance ${pct(p.real)} por ciento, abrir detalle"><span class="plan-room-head"><b>${number}</b><i>${number === '216' ? 'DEMO 3D' : ref?.tipo ?? 'HABITACIÓN'}</i></span><span class="plan-room-progress"><span style="width:${pct(p.real)}%"></span></span><small>${pct(p.real)}% ejecutado <span>· ${pct(p.prog)}% previsto</span></small><em>${assigned.join(' · ') || 'Equipo programado'}</em></button>`;
+  };
+  return `<div class="plan-screen">
+    <header class="plan-intro"><div><p class="plan-kicker">02 / 05 · ESTELAR LA FONTANA</p><h1>Planeación del <b>piso 2.</b></h1><p>La matriz organiza 12 habitaciones en tres frentes paralelos. Abre una habitación para ver tareas, responsables previstos y novedades.</p></div><div class="plan-intro-actions"><a class="btn pri" href="#bim-${S.espUser || 'arq'}">Abrir modelo BIM ${ic('arrowR')}</a><a class="btn" href="#novedades">Ver novedades</a></div></header>
+    <div class="plan-dashboard"><section class="plan-floor"><div class="plan-section-head"><div><span>PLANTA DE EJECUCIÓN</span><h2>Torre Suites · Nivel 02</h2></div><small>Selecciona cualquier habitación <span>↗</span></small></div><div class="plan-lanes">${fronts.map((front, i) => {
+      const numbers = front.secuencia.split('→').map(s => s.trim());
+      const stat = porFrente(front.frente);
+      return `<div class="plan-lane"><div class="plan-lane-head"><span>0${i + 1} / ${front.frente.toUpperCase()}</span><b>${pct(stat.real)}%</b></div><div class="plan-rooms">${numbers.map(room).join('')}</div></div>`;
+    }).join('')}</div><div class="plan-corridor"><span>↔</span> CORREDOR · CIRCULACIÓN COMÚN <span>↔</span></div><p class="plan-data-note">Avance y responsables tomados de la matriz de programación. La presencia en tiempo real se conectará al acceso personal y check-in QR.</p></section>
+    <aside class="plan-side"><div class="plan-summary"><span class="plan-kicker">CONTROL DE AVANCE</span><h2>Visión general</h2><div class="plan-big"><strong>${pct(overall.real)}<i>%</i></strong><small>avance ejecutado en la matriz</small></div><div class="plan-meter"><div><span>Ejecutado</span><b>${pct(overall.real)}%</b></div><i><span style="width:${pct(overall.real)}%"></span></i></div><div class="plan-meter muted"><div><span>Programado</span><b>${pct(overall.prog)}%</b></div><i><span style="width:${pct(overall.prog)}%"></span></i></div><div class="plan-summary-foot"><span>${overall.hechas} actividades completadas</span><span>${overall.n} actividades en matriz</span></div></div><div class="plan-next"><span class="plan-kicker">SIGUIENTE PASO</span><h3>Inspecciona el modelo.</h3><p>Entra al BIM con tu especialidad para ver sistemas, elementos y puntos de novedad.</p><a href="#bim-${S.espUser || 'arq'}">Explorar BIM ${ic('arrowR')}</a></div></aside></div>
+  </div>`;
+}
 function renderPage(): void {
   const page = $('page');
   const base = route.split('-')[0];
   if (!PAGES.includes(base)) { page.innerHTML = ''; page.className = ''; return; }
-  const html = base === 'panel' ? vPanel() : base === 'ia' ? vAsistente(aiChat, waLog, modo360) : base === 'plan' ? vPlan() : base === 'avance' ? vAvance(habFiltro) : base === 'proveedores' ? vProveedores()
+  const html = base === 'panel' ? vPanel() : base === 'ia' ? vAsistente(aiChat, waLog, modo360) : base === 'plan' ? vPlanPiso2() : base === 'avance' ? vAvance(habFiltro) : base === 'proveedores' ? vProveedores()
     : base === 'novedades' ? vNovedades(filtroNov) : base === 'qr' ? vQR() : base === 'entregables' ? vEntregables() : vHonorarios();
   const y = page.scrollTop;
   const focusId = document.activeElement?.id;
