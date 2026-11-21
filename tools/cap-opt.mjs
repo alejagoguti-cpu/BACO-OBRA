@@ -1,0 +1,12 @@
+import puppeteer from 'puppeteer-core';
+const b = await puppeteer.launch({ executablePath: 'C:/Program Files/Google/Chrome/Application/chrome.exe', headless: 'new', protocolTimeout: 300000, args: ['--no-sandbox', '--use-angle=d3d11', '--ignore-gpu-blocklist', '--window-size=1600,900'] });
+const p = await b.newPage(); await p.setViewport({ width: 1600, height: 900 });
+const errs = []; p.on('pageerror', (e) => errs.push(e.message)); p.on('console', (m) => { if (m.type() === 'error') errs.push(m.text().slice(0, 200)); });
+const w = (ms) => new Promise((r) => setTimeout(r, ms));
+const shot = (n) => p.screenshot({ path: `build/cap/${n}.jpg`, type: 'jpeg', quality: 78 });
+await p.goto('http://127.0.0.1:4321/BACO-OBRA/?demo#fontana/piso-2', { waitUntil: 'networkidle2', timeout: 120000 }); await w(16000); await shot('o1-planta');
+await w(8000); await shot('o2-planta-quieta');
+await p.evaluate(() => { location.hash = 'novedades'; }); await w(5000); await shot('o3-novedades');
+await p.evaluate(() => { location.hash = 'fontana/216/gemelo'; }); await w(20000); await shot('o4-gemelo');
+await w(6000); await shot('o5-gemelo-quieto');
+console.log(errs.slice(0, 8).join('\n') || 'sin errores'); await b.close();

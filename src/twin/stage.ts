@@ -235,9 +235,10 @@ export function crearStage(host: HTMLElement): Stage {
       } catch { /* sin contornos: planta sin habitaciones seleccionables */ }
     }
     // contexto del complejo (sin BIM): resto del hotel recortado por la huella del Revit + torres vecinas
-    void cargarContexto(man.enu);
+    // el contexto urbano ya lo dibuja la escena del sitio (Cesium): aquí no se duplica (ahorra ~30 MB y memoria de video)
     encuadreInicial(); aplicarRig();
     construirTimeline();
+    despertar(3000);
   })();
 
   async function cargarContexto(enu: Manifest['enu']): Promise<void> {
@@ -547,6 +548,10 @@ export function crearStage(host: HTMLElement): Stage {
 
   /* ---------------- bucle ---------------- */
   let raf = 0; let pausado = false; let vivo = true;
+  let despiertoHasta = 0; let primeros = 30;
+  function despertar(ms = 1500): void { despiertoHasta = Math.max(despiertoHasta, performance.now() + ms); }
+  const alInteractuar = () => despertar(1500);
+  ['pointerdown', 'pointermove', 'wheel', 'keydown', 'input', 'click'].forEach((e) => addEventListener(e, alInteractuar, { passive: true }));
   function resize(): void {
     const w = host.clientWidth, h = host.clientHeight; if (!w || !h) return;
     renderer.setSize(w, h, false); labels.setSize(w, h);
@@ -554,12 +559,19 @@ export function crearStage(host: HTMLElement): Stage {
     const H = (orto.top - orto.bottom) || 1; const asp = w / h;
     orto.left = -H * asp / 2; orto.right = H * asp / 2; orto.updateProjectionMatrix();
   }
-  const ro = new ResizeObserver(resize); ro.observe(host);
+  const ro = new ResizeObserver(() => { resize(); despertar(500); }); ro.observe(host);
   function loop(): void {
     if (!vivo) return;
     raf = requestAnimationFrame(loop);
     if (pausado) return;
-    if (rigActivo || tl.isActive() || modo === 'bim') { aplicarRig(); } else controls.update();
+    // dibujo a demanda: solo cuando hay animación, movimiento de cámara, interacción reciente o capas que pulsan
+    const ahora = performance.now();
+    const anim = rigActivo || tl.isActive() || modo === 'bim' || gsap.getTweensOf([st, rig, orto, controls.target]).length > 0;
+    let mueve = false;
+    if (anim) aplicarRig(); else mueve = controls.update();
+    const pulso = [...capas.values()].some((c) => c.resaltada);
+    if (!(anim || mueve || pulso || ahora < despiertoHasta || primeros > 0)) return;
+    if (primeros > 0) primeros--;
     aplicarEstado();
     renderer.render(scene, cam);
     labels.render(scene, cam);
@@ -629,7 +641,7 @@ export function crearStage(host: HTMLElement): Stage {
       }
       return { cats: e.cats.filter((c) => (porCat.get(c) ?? []).some((m) => m.parent === p2?.grupo || m.parent === mepGrupo)), elementos: hayEl ? el : null, tris };
     },
-    resize,
+    resize: () => { resize(); despertar(500); },
     get vista3d() { return vista3d; },
     onCamara: null,
     async setVista3D(on) {
@@ -668,9 +680,10 @@ export function crearStage(host: HTMLElement): Stage {
     resaltarHabitacion(num) { habSel = num; pintarSalas(); },
     liberarMemoria() { liberarContexto(); },
     pausar(p) {
+      if (!p) { primeros = 30; despertar(2000); }
       if (!p && !ctxCargado && enuCtx) void cargarContexto(enuCtx); pausado = p; labels.domElement.style.display = p ? 'none' : ''; },
     dispose() {
-      vivo = false; cancelAnimationFrame(raf); ro.disconnect(); tl.kill(); vuelo?.kill(); controls.dispose();
+      vivo = false; cancelAnimationFrame(raf); ['pointerdown', 'pointermove', 'wheel', 'keydown', 'input', 'click'].forEach((e) => removeEventListener(e, alInteractuar)); ro.disconnect(); tl.kill(); vuelo?.kill(); controls.dispose();
       scene.traverse((o) => { const m = o as THREE.Mesh; if (m.geometry) m.geometry.dispose(); const mt = m.material as THREE.Material | THREE.Material[] | undefined; if (mt) (Array.isArray(mt) ? mt : [mt]).forEach((x) => x.dispose()); });
       renderer.dispose(); labels.domElement.remove(); canvas.remove();
     },

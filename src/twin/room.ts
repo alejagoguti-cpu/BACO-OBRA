@@ -101,7 +101,7 @@ export function crearRoom(host: HTMLElement, url: string): Room {
     renderer.setSize(w, h, false); composer.setSize(w, h); gtao.setSize(w, h); outline.setSize(w, h);
     camera.aspect = w / h; camera.updateProjectionMatrix();
   }
-  const ro = new ResizeObserver(resize); ro.observe(host);
+  const ro = new ResizeObserver(() => { resize(); despertar(500); }); ro.observe(host);
 
   const listo = (async () => {
     const r = await fetch(import.meta.env.BASE_URL + url);
@@ -134,6 +134,7 @@ export function crearRoom(host: HTMLElement, url: string): Room {
       m.userData.el = el; porId.set(id, { mesh: m, el }); mallas.push(m);
     });
     scene.add(gltf.scene);
+    despertar(4000);
     const box = new THREE.Box3(); mallas.forEach((m) => { if (m.visible) box.expandByObject(m); });
     box.getCenter(centro); const size = box.getSize(new THREE.Vector3()); radio = Math.max(size.x, size.z) * 0.85; piso = box.min.y; techo.constant = piso + 1.65;
     sol.position.set(centro.x - 4, piso + 5, centro.z + 6); sol.target.position.copy(centro);
@@ -175,7 +176,19 @@ export function crearRoom(host: HTMLElement, url: string): Room {
   });
 
   let raf = 0, vivo = true;
-  function loop(): void { if (!vivo) return; raf = requestAnimationFrame(loop); controls.update(); composer.render(); }
+  // dibujo a demanda: la oclusión ambiental y el contorno son costosos; solo se redibuja si algo cambia
+  let despiertoHasta = 0; let primeros = 40;
+  function despertar(ms = 1200): void { despiertoHasta = Math.max(despiertoHasta, performance.now() + ms); }
+  const alInteractuar = () => despertar();
+  ['pointerdown', 'pointermove', 'wheel', 'keydown', 'input', 'click'].forEach((e) => addEventListener(e, alInteractuar, { passive: true }));
+  function loop(): void {
+    if (!vivo) return; raf = requestAnimationFrame(loop);
+    const mueve = controls.update();
+    const anim = gsap.getTweensOf([camera.position, controls.target]).length > 0;
+    if (!(mueve || anim || primeros > 0 || performance.now() < despiertoHasta)) return;
+    if (primeros > 0) primeros--;
+    composer.render();
+  }
   loop();
 
   const api: Room = {
@@ -211,7 +224,7 @@ export function crearRoom(host: HTMLElement, url: string): Room {
     setExposicion(v) { renderer.toneMappingExposure = v; },
     setAO(on) { gtao.enabled = on; },
     dispose() {
-      vivo = false; cancelAnimationFrame(raf); ro.disconnect(); controls.dispose(); gsap.killTweensOf(camera.position); gsap.killTweensOf(controls.target);
+      vivo = false; cancelAnimationFrame(raf); ['pointerdown', 'pointermove', 'wheel', 'keydown', 'input', 'click'].forEach((e) => removeEventListener(e, alInteractuar)); ro.disconnect(); controls.dispose(); gsap.killTweensOf(camera.position); gsap.killTweensOf(controls.target);
       scene.traverse((o) => { const m = o as THREE.Mesh; if (m.geometry) m.geometry.dispose(); const mt = m.material as THREE.Material | THREE.Material[] | undefined; if (mt) (Array.isArray(mt) ? mt : [mt]).forEach((x) => { Object.values(x).forEach((v) => { if (v instanceof THREE.Texture) v.dispose(); }); x.dispose(); }); });
       composer.dispose(); renderer.dispose(); canvas.remove();
     },

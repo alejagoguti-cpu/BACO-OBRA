@@ -17,7 +17,14 @@ import { vResumen, montarResumen, detalleKpi, enviarAvance, validar, F as FR } f
 import { iniciarAvance, alCambiarAvance } from './avance';
 import { filtro as filtroNovUI } from '../twin/nov-ui';
 import { iniciarNovedades, alCambiarNovedades, detenerNovedades } from './novedades';
-import { montarWorkspace, abrirWorkspace, ocultarWorkspace, parseRuta, migas } from '../twin/workspace';
+import { parseRuta } from '../twin/rutas';
+// el visor three.js del gemelo (planta, novedades, interior) se descarga solo al entrar a esas vistas
+type WS = typeof import('../twin/workspace');
+let ws: WS | null = null;
+let wsCargando: Promise<WS> | null = null;
+function cargarWS(): Promise<WS> { wsCargando ??= import('../twin/workspace').then((m) => { ws = m; m.montarWorkspace(document.getElementById('twin')!); return m; }); return wsCargando; }
+const ocultarWorkspace = () => ws?.ocultarWorkspace();
+const migas = (): [string, string][] => ws?.migas() ?? [['Hoteles', '#mapa']];
 
 interface HLFApi { precargar(): void; explotar(): void; recomponer(): void; readonly explotado: boolean; entrar(): Promise<void>; vistaColombia(d?: number): void; volarA(lon: number, lat: number, alt?: number, dur?: number): void; viewer: { useDefaultRenderLoop: boolean }; readonly modo: 'pais' | 'sitio'; piso2(): void; completo(): void }
 const W = window as unknown as { HLF?: HLFApi };
@@ -594,7 +601,7 @@ async function go(): Promise<void> {
     const tw = $('twin'); const desdeMapa = tw.hidden; tw.hidden = false;
     if (desdeMapa) { tw.style.transition = 'none'; tw.style.opacity = '0'; requestAnimationFrame(() => requestAnimationFrame(() => { tw.style.transition = 'opacity .9s ease'; tw.style.opacity = '1'; })); }
     renderChrome();
-    await abrirWorkspace(rt);
+    await (await cargarWS()).abrirWorkspace(rt);
     renderChrome();
     return;
   }
@@ -967,7 +974,6 @@ addEventListener('keydown', (e) => {
 
 void cargarObra().then(() => { if (PAGES.includes(route.split('-')[0])) { anim = true; renderPage(); } });
 void cargarNovedades().then(() => { renderChrome(); if (PAGES.includes(route.split('-')[0])) renderPage(); });
-montarWorkspace($('twin'));
 addEventListener('twin:ruta', () => { route = decodeURIComponent(location.hash.slice(1)); renderChrome(); });
 alCambiarPresencia((l) => { presentes = l; pintarWho(); });
 alCambiarSesion((ev) => { if (ev === 'PASSWORD_RECOVERY') location.hash = 'nueva-clave'; });
