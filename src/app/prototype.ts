@@ -25,9 +25,9 @@ const devices = [
 
 export function mountPrototype(host: HTMLElement): () => void {
   host.innerHTML = `<section class="proto" aria-label="Prototipo de la habitación 216">
-    <header class="proto-top"><div class="proto-brand"><span class="proto-mark">B<span>·</span></span><span>BACO <strong>OBRA</strong></span></div>
-      <div class="proto-crumb"><a href="#obra">Hotel La Fontana</a><span>/</span><a href="#bim-arq">Piso 02</a><span>/</span><b>Habitación 216</b></div>
-      <div class="proto-top-actions"><span class="proto-status"><i></i> PROTOTIPO</span><a class="proto-back" href="#obra">← Volver a la torre</a></div>
+    <header class="proto-top"><div class="proto-brand"><span class="proto-mark"><img src="logos/baco.png" alt="BACO"></span><span>BACO <strong>OBRA</strong></span></div>
+      <div class="proto-crumb"><a href="#mapa">Hotel La Fontana</a><span>/</span><a href="#plan">Piso 02</a><span>/</span><b>Habitación 216</b></div>
+      <div class="proto-top-actions"><span class="proto-status"><i></i> PROTOTIPO</span><a class="proto-back" href="#novedades">← Volver a novedades</a></div>
     </header>
     <div class="proto-layout">
       <aside class="proto-catalog"><div class="proto-overline">01 / ARQUITECTURA</div><h1>Habitación<br><em>216</em></h1>
@@ -57,13 +57,13 @@ export function mountPrototype(host: HTMLElement): () => void {
   renderer.clippingPlanes = [new THREE.Plane(new THREE.Vector3(1,0,0),-2.5),new THREE.Plane(new THREE.Vector3(0,0,-1),-.35),new THREE.Plane(new THREE.Vector3(0,-1,0),1.65)];
   renderer.localClippingEnabled = true;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.35;
+  renderer.toneMappingExposure = 1.12;
   canvas.append(renderer.domElement);
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(42, 1, .05, 100);
-  const ambient = new THREE.AmbientLight(0xffffff, 2.0); scene.add(ambient);
-  const sun = new THREE.DirectionalLight(0xfff3df, 2.2); sun.position.set(-3, 9, 5); scene.add(sun);
-  const fill = new THREE.DirectionalLight(0xd8e7f3, 1.2); fill.position.set(8, 6, -7); scene.add(fill);
+  const ambient = new THREE.AmbientLight(0xffffff, 1.3); scene.add(ambient);
+  const sun = new THREE.DirectionalLight(0xfff3df, 1.7); sun.position.set(-3, 9, 5); scene.add(sun);
+  const fill = new THREE.DirectionalLight(0xd8e7f3, 0.7); fill.position.set(8, 6, -7); scene.add(fill);
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true; controls.dampingFactor = .08;
   controls.minDistance = 3.5; controls.maxDistance = 24;
@@ -76,7 +76,7 @@ export function mountPrototype(host: HTMLElement): () => void {
   resize.observe(canvas);
   const state: Record<string,boolean> = {light:true,climate:true,curtain:false,tv:false,lock:false};
   function feedback(message:string){const el=host.querySelector<HTMLElement>('#proto-feedback');if(!el)return;el.textContent=message;el.classList.remove('pop');void el.offsetWidth;el.classList.add('pop')}
-  function sync() { ambient.intensity=state.light?2:.65; sun.intensity=state.curtain?1.1:2.2; renderer.toneMappingExposure=state.light?1.35:.85;
+  function sync() { ambient.intensity=state.light ? 1.3 : .45; sun.intensity=state.curtain ? .95 : 1.7; renderer.toneMappingExposure=state.light ? 1.12 : .75;
     host.querySelectorAll<HTMLButtonElement>('[data-pact="toggle"]').forEach(b=>b.setAttribute('aria-pressed',String(state[b.dataset.value!]))) }
   host.addEventListener('click', onClick);
   function onClick(e:Event) { const b=(e.target as HTMLElement).closest<HTMLButtonElement>('[data-pact]'); if(!b)return;
