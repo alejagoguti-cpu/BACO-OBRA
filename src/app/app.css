@@ -694,8 +694,6 @@ body[data-modo="pais"] .dock,body[data-modo="pais"] #hint,body[data-modo="pais"]
 #app .cloud-points:after{background:linear-gradient(130deg,transparent 20%,#e8ddb188 50%,transparent 80%)}
 @media(max-width:720px){#app .login-gate.live-map{background:linear-gradient(0deg,rgba(247,244,239,.97),transparent 95%)}}
 /* Mapa geográfico local: visible incluso sin claves externas de Cesium. */
-body[data-modo="pais"] #cesiumContainer canvas{visibility:hidden}
-body[data-modo="pais"] #cesiumContainer{background:radial-gradient(circle at 73% 42%,#fffefa,#e8e4dc 75%)}
 .colombia-map{position:fixed;z-index:30;width:min(63vw,820px);aspect-ratio:8/7;right:1.8vw;top:52%;transform:translateY(-50%);pointer-events:none;animation:map-arrive .7s ease-out both}
 .colombia-shape{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 16px 26px #0e306419)}
 .map-grid{position:absolute;inset:6%;background-image:linear-gradient(#0e30640a 1px,transparent 1px),linear-gradient(90deg,#0e30640a 1px,transparent 1px);background-size:32px 32px;mask-image:radial-gradient(ellipse,#000 35%,transparent 75%)}
@@ -779,3 +777,11 @@ body[data-modo="pais"] #cesiumContainer{background:radial-gradient(circle at 73%
 .nov-side{display:flex;flex-direction:column;gap:12px}.nov-locations,.nov-qr{background:#fffefa;border:1px solid #ded9cf;border-radius:12px;padding:20px}.nov-locations h3,.nov-qr h3{font:500 20px 'Space Grotesk',Arial,sans-serif;letter-spacing:-.03em;margin:0 0 14px}.nov-locations button{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;text-align:left;border:0;border-top:1px solid #ebe6df;padding:10px 0;background:transparent;color:#0e3064;font-size:11px;font-weight:600}.nov-locations button:hover span{text-decoration:underline}.nov-locations button b{display:grid;place-items:center;min-width:22px;height:22px;background:#f2eddf;border-radius:50%;font-size:10px;color:#b59535}.nov-qr{background:#0e3064;color:#fff;border-color:#0e3064}.nov-qr .plan-kicker{color:#d7bb62}.nov-qr p{color:#c4d2df;font-size:11px;line-height:1.5}.nov-qr a{display:flex;align-items:center;justify-content:space-between;text-decoration:none;color:#fff;border-top:1px solid #ffffff32;margin-top:15px;padding-top:13px;font-weight:700;font-size:11px}
 @media(max-width:980px){.nov-layout{grid-template-columns:1fr}.nov-side{display:grid;grid-template-columns:1fr 1fr}.nov-register-head{align-items:start}}
 @media(max-width:650px){.nov-intro{align-items:start;flex-direction:column}.nov-actions{width:100%}.nov-actions .btn{flex:1}.nov-stats{grid-template-columns:repeat(2,1fr)}.nov-register-head{flex-direction:column}.nov-search{width:100%}.nov-side{grid-template-columns:1fr}}
+
+/* mapa real de hoteles */
+#app .map-cine{position:fixed;z-index:31;left:50%;bottom:26px;transform:translateX(-50%);display:flex;gap:8px;align-items:center;padding:8px;border-radius:999px;background:rgba(14,48,100,.82);backdrop-filter:blur(14px);box-shadow:0 14px 30px -14px rgba(0,0,0,.5)}
+#app .map-cine button{border:0;border-radius:999px;padding:10px 16px;font:700 13px var(--f);cursor:pointer;background:rgba(255,255,255,.12);color:#fff;display:inline-flex;gap:8px;align-items:center}
+#app .map-cine button.on,#app .map-cine button:hover{background:#B79E66;color:#0E3064}
+#app .map-cine .ic{width:16px;height:16px}
+#app .map-ciudad{position:fixed;z-index:31;left:50%;top:96px;transform:translateX(-50%);font:300 clamp(30px,4vw,56px)/1 var(--f);color:#fff;letter-spacing:-.01em;text-shadow:0 4px 30px rgba(0,0,0,.55);pointer-events:none;animation:twIn .6s ease}
+#app .map-ciudad small{display:block;font:700 11px var(--f);letter-spacing:.2em;text-transform:uppercase;color:#E8C98A;margin-bottom:6px;text-align:center}

@@ -66,11 +66,14 @@ const oscuro = () => document.documentElement.dataset.theme === 'dark' || (!docu
 /* ---------------- mapa (Cesium, carga diferida) ---------------- */
 let mapa: Promise<HLFApi> | null = null;
 let pines: { show(v: boolean): void } | null = null;
+let est: typeof import('../estelar') | null = null;
+let entradaHecha = false; let enRecorrido = false; let ciudadCine: string | null = null;
 function cargarMapa(): Promise<HLFApi> {
   mapa ??= (async () => {
     $('ov').insertAdjacentHTML('beforeend', '<div class="map-cloud" id="mapLoading" role="status"><div class="cloud-points" aria-hidden="true"></div><span>Ubicando hoteles en Colombia…</span></div>');
     await import('../main');
-    const [{ crearPinesEstelar }] = await Promise.all([import('../estelar')]);
+    est = await import('../estelar');
+    const { crearPinesEstelar } = est;
     const hlf = W.HLF!;
     pines = crearPinesEstelar(hlf.viewer as never, (id) => seleccionarHotel(id));
     document.getElementById('mapLoading')?.remove();
@@ -85,7 +88,7 @@ function seleccionarHotel(id: string): void {
   hotelSel = id;
   const h = HOTELES.find((x) => x.id === id)!;
   if (location.hash !== '#mapa' && location.hash !== '') { location.hash = 'mapa'; }
-  void cargarMapa().then((hlf) => hlf.volarA(h.lon, h.lat, h.obra ? 3500 : 6000));
+  void cargarMapa().then((hlf) => { est?.detenerCine(hlf.viewer as never); enRecorrido = false; hlf.volarA(h.lon, h.lat, h.obra ? 3500 : 6000); });
   renderOv();
 }
 
@@ -182,21 +185,6 @@ function renderBimUi(): void {
 let loginChoice: 'estelar' | 'contratista' = S.rol ?? 'estelar';
 let loginEsp = S.espUser || 'arq';
 
-function renderMapVisual(interactive: boolean): string {
-  const cities = [...new Set(HOTELES.map((h) => h.ciudad))];
-  return `<div class="colombia-map ${interactive ? '' : 'preview'}" aria-label="Mapa de hoteles en Colombia">
-    <div class="map-grid"></div><img class="colombia-shape" src="colombia.svg" alt="Contorno de Colombia">
-    ${cities.map((city) => {
-      const hotels = HOTELES.filter((h) => h.ciudad === city);
-      const lon = hotels.reduce((n, h) => n + h.lon, 0) / hotels.length;
-      const lat = hotels.reduce((n, h) => n + h.lat, 0) / hotels.length;
-      const x = (100 + (lon + 79) / 13 * 600) / 800 * 100;
-      const y = (30 + (12.6 - lat) / 16.9 * 640) / 700 * 100;
-      return `<button type="button" class="city-pin ${city === 'Bogotá' ? 'capital' : ''} ${hotels.some(h => h.id === hotelSel) ? 'selected' : ''}" style="left:${x.toFixed(2)}%;top:${y.toFixed(2)}%" data-act="hotel" data-v="${hotels.find(h => h.obra)?.id || hotels[0].id}" ${interactive ? '' : 'tabindex="-1"'} aria-label="${city}: ${hotels.length} hoteles"><i></i><span>${city} <b>${hotels.length}</b></span></button>`;
-    }).join('')}
-    <div class="map-axis">COLOMBIA · 11 CIUDADES / 22 HOTELES</div>
-  </div>`;
-}
 
 function renderLogin(): void {
   mostrarAcceso($('layer'), () => { void trasLogin(); });
@@ -276,7 +264,8 @@ function renderOv(): void {
   if (route === 'mapa' || route === '') {
     const ciudades = [...new Set(HOTELES.map((h) => h.ciudad))];
     const sel = hotelSel ? HOTELES.find((h) => h.id === hotelSel)! : null;
-    ov.innerHTML = `${renderMapVisual(true)}
+    ov.innerHTML = `${ciudadCine ? `<div class="map-ciudad"><small>Hoteles Estelar</small>${esc(ciudadCine)}</div>` : ''}
+    <div class="map-cine"><button data-act="mapTodos" class="${enRecorrido ? '' : 'on'}">${ic('globe', 1.8)} Ver todos</button><button data-act="mapRecorrido" class="${enRecorrido ? 'on' : ''}">${ic(enRecorrido ? 'pause' : 'play', 1.8)} ${enRecorrido ? 'Detener recorrido' : 'Recorrido por los hoteles'}</button><a href="#hoteles/la-fontana"><button>${ic('build', 1.8)} La Fontana</button></a></div>
     <aside class="mapcard ${mapOpen ? 'open' : ''}">
       <div class="glass"><p class="map-eyebrow">PORTAFOLIO / COLOMBIA</p><h1>Todos los hoteles.<br><b>Una sola vista.</b></h1>
         <div class="kchips"><div><b>${HOTELES.length}</b><small>hoteles</small></div><div><b>${ciudades.length}</b><small>ciudades</small></div><div><b style="color:var(--coral)">1</b><small>en remodelación</small></div></div></div>
@@ -580,6 +569,7 @@ async function go(): Promise<void> {
     return;
   }
   ocultarWorkspace();
+  if (base !== 'mapa' && base !== '' && W.HLF && est) { est.detenerCine(W.HLF.viewer as never); enRecorrido = false; ciudadCine = null; }
   if (h === 'hoteles/bogota' || h === 'hoteles/la-fontana') {
     $('rail').hidden = false; $('topbar').hidden = false; $('page').innerHTML = ''; $('page').className = ''; bim?.cerrar(); $('bim').hidden = true;
     renderChrome();
@@ -626,7 +616,7 @@ async function go(): Promise<void> {
   const hlf = await cargarMapa();
   pausarMapa(false);
   if (base === 'obra') { pines?.show(false); void hlf.entrar(); }
-  else { pines?.show(true); if (hlf.modo === 'sitio' && !hotelSel) hlf.vistaColombia(); }
+  else { pines?.show(true); if (!hotelSel && est) { hlf.vistaColombia(0); est.verTodos(hlf.viewer as never, !entradaHecha); entradaHecha = true; } }
 }
 
 /* ---------------- eventos ---------------- */
@@ -647,6 +637,8 @@ app.addEventListener('click', async (ev) => {
     case 'piso2': piso2Open = !piso2Open; W.HLF?.piso2(); renderOv(); return;
     case 'completo': piso2Open = false; W.HLF?.completo(); renderOv(); return;
     case 'irRuta': location.hash = v; return;
+    case 'mapTodos': { const h = await cargarMapa(); enRecorrido = false; ciudadCine = null; hotelSel = null; h.vistaColombia(0); est?.verTodos(h.viewer as never); renderOv(); return; }
+    case 'mapRecorrido': { const h = await cargarMapa(); if (enRecorrido) { est?.detenerCine(h.viewer as never); enRecorrido = false; ciudadCine = null; renderOv(); return; } enRecorrido = true; hotelSel = null; h.vistaColombia(0); renderOv(); void est?.recorrido(h.viewer as never, (c) => { ciudadCine = c; if (!c) enRecorrido = false; if (route === 'mapa' || route === '') renderOv(); }); return; }
     case 'asAbrir': { const pa = $('asisPanel'); pa.hidden = !pa.hidden; pintarPanelAs(); return; }
     case 'asCerrar': $('asisPanel').hidden = true; return;
     case 'asSug': void preguntar(v); return;
