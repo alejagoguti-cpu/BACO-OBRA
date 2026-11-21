@@ -67,6 +67,7 @@ const oscuro = () => document.documentElement.dataset.theme === 'dark' || (!docu
 let mapa: Promise<HLFApi> | null = null;
 let pines: { show(v: boolean): void } | null = null;
 let est: typeof import('../estelar') | null = null;
+let ciudadSel: string | null = null;
 let entradaHecha = false; let enRecorrido = false; let ciudadCine: string | null = null;
 function cargarMapa(): Promise<HLFApi> {
   mapa ??= (async () => {
@@ -87,6 +88,7 @@ function seleccionarHotel(id: string): void {
   if (id === 'fontana') { location.hash = 'hoteles/la-fontana'; return; }
   hotelSel = id;
   const h = HOTELES.find((x) => x.id === id)!;
+  ciudadSel = h.ciudad;
   if (location.hash !== '#mapa' && location.hash !== '') { location.hash = 'mapa'; }
   void cargarMapa().then((hlf) => { est?.detenerCine(hlf.viewer as never); enRecorrido = false; hlf.volarA(h.lon, h.lat, h.obra ? 3500 : 6000); });
   renderOv();
@@ -266,14 +268,16 @@ function renderOv(): void {
     const sel = hotelSel ? HOTELES.find((h) => h.id === hotelSel)! : null;
     ov.innerHTML = `${ciudadCine ? `<div class="map-ciudad"><small>Hoteles Estelar</small>${esc(ciudadCine)}</div>` : ''}
     <div class="map-cine"><button data-act="mapTodos" class="${enRecorrido ? '' : 'on'}">${ic('globe', 1.8)} Ver todos</button><button data-act="mapRecorrido" class="${enRecorrido ? 'on' : ''}">${ic(enRecorrido ? 'pause' : 'play', 1.8)} ${enRecorrido ? 'Detener recorrido' : 'Recorrido por los hoteles'}</button><a href="#hoteles/la-fontana"><button>${ic('build', 1.8)} La Fontana</button></a></div>
-    <aside class="mapcard ${mapOpen ? 'open' : ''}">
-      <div class="glass"><p class="map-eyebrow">PORTAFOLIO / COLOMBIA</p><h1>Todos los hoteles.<br><b>Una sola vista.</b></h1>
-        <div class="kchips"><div><b>${HOTELES.length}</b><small>hoteles</small></div><div><b>${ciudades.length}</b><small>ciudades</small></div><div><b style="color:var(--coral)">1</b><small>en remodelación</small></div></div></div>
-      <div class="glass feature"><div class="body"><span class="map-feature-tag"><i></i> PROTOTIPO ACTIVO</span><div><b style="font-size:20px">La Fontana</b><p class="muted" style="font-size:13.5px">Bogotá · Torre Suites · Piso 02</p></div><p class="map-feature-copy">Empieza por la planeación. Recorre después el modelo BIM, las novedades y cada habitación.</p>
-        <div class="map-feature-actions"><button class="btn" data-act="hotel" data-v="fontana">Ubicar en el mapa</button><a class="btn coral cta" href="#plan">Abrir planeación ${ic('arrowR', 2.2)}</a></div>
-        <div class="map-specialties"><span>ESPECIALIDAD ACTIVA · CAMBIAR AQUÍ</span><div>${ESPECIALIDADES.map(x=>`<button data-act="setEspUser" data-v="${x.id}" aria-pressed="${S.espUser===x.id}">${x.corto}</button>`).join('')}</div></div>
-        <button class="chip" data-act="toggleLista" style="align-self:center">${mapOpen ? 'Ocultar' : 'Ver'} todos los hoteles</button></div></div>
-      <div class="glass hlist">${ciudades.map((c) => `<span class="city">${c}</span>` + HOTELES.filter((h) => h.ciudad === c).map((h) => `<button class="hrow ${h.obra ? 'obra' : ''}" data-act="hotel" data-v="${h.id}" aria-pressed="${hotelSel === h.id}"><span class="pin">${ic(h.obra ? 'build' : 'pin', 2)}</span><span><b>${esc(h.nombre)}</b><small>${esc(h.dir)}</small></span></button>`).join('')).join('')}</div>
+    <aside class="mapcard cities">
+      <div class="glass">
+        ${ciudadSel ? `<button class="cc-back" data-act="mapCiudad" data-v="">${ic('back', 2)} Todas las ciudades</button>
+          <p class="map-eyebrow">HOTELES ESTELAR · ${esc(ciudadSel.toUpperCase())}</p><h1>${esc(ciudadSel)}</h1>
+          <p class="muted" style="font-size:13px;margin:2px 0 10px">${HOTELES.filter((h) => h.ciudad === ciudadSel).length} ${HOTELES.filter((h) => h.ciudad === ciudadSel).length === 1 ? 'hotel' : 'hoteles'}</p>
+          <div class="cc-list">${HOTELES.filter((h) => h.ciudad === ciudadSel).map((h) => `<button class="cc-hotel ${h.obra ? 'obra' : ''}" data-act="mapHotel" data-v="${h.id}" aria-pressed="${hotelSel === h.id}"><span class="pin">${ic(h.obra ? 'build' : 'pin', 2)}</span><span><b>${esc(h.obra ? 'Hotel Estelar La Fontana' : h.nombre)}</b><small>${esc(h.dir)}${h.obra ? ' · remodelación Torre Suites · ver en 3D' : ''}</small></span>${ic('arrowR', 1.8)}</button>`).join('')}</div>`
+        : `<p class="map-eyebrow">PORTAFOLIO · COLOMBIA</p><h1>Hoteles <b>Estelar</b></h1>
+          <p class="muted" style="font-size:13px;margin:2px 0 10px">${HOTELES.length} hoteles en ${ciudades.length} ciudades · elige una ciudad</p>
+          <div class="cc-list">${[...ciudades].sort((a, b) => HOTELES.filter((h) => h.ciudad === b).length - HOTELES.filter((h) => h.ciudad === a).length || a.localeCompare(b)).map((c) => { const n = HOTELES.filter((h) => h.ciudad === c).length; const obra = HOTELES.some((h) => h.ciudad === c && h.obra); return `<button class="cc-city ${obra ? 'obra' : ''}" data-act="mapCiudad" data-v="${esc(c)}"><span><b>${esc(c)}</b><small>${n} ${n === 1 ? 'hotel' : 'hoteles'}${obra ? ' · La Fontana en obra' : ''}</small></span>${ic('chev', 2)}</button>`; }).join('')}</div>`}
+      </div>
     </aside>
     ${sel ? `<aside class="hcard glass"><div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start"><div><p class="muted" style="font-size:12.5px;font-weight:800">${esc(sel.ciudad)}</p><h2 style="font-size:20px;font-weight:800">${esc(sel.nombre)}</h2><p class="muted" style="font-size:13.5px">${esc(sel.dir)}</p></div><button class="circle sm light" data-act="cerrarHotel" aria-label="Cerrar">${ic('x')}</button></div>
       ${sel.obra ? `<span class="pill crit">Remodelación en curso</span><a class="btn coral block" href="#plan">Abrir planeación ${ic('arrowR')}</a>` : `<span class="pill neu">Sin obra activa</span><p class="muted" style="font-size:13px">Ubicación aproximada por dirección. El prototipo interactivo está en La Fontana.</p><button class="btn block" data-act="colombia">${ic('globe')} Ver toda Colombia</button>`}</aside>` : ''}`;
@@ -637,7 +641,9 @@ app.addEventListener('click', async (ev) => {
     case 'piso2': piso2Open = !piso2Open; W.HLF?.piso2(); renderOv(); return;
     case 'completo': piso2Open = false; W.HLF?.completo(); renderOv(); return;
     case 'irRuta': location.hash = v; return;
-    case 'mapTodos': { const h = await cargarMapa(); enRecorrido = false; ciudadCine = null; hotelSel = null; h.vistaColombia(0); est?.verTodos(h.viewer as never); renderOv(); return; }
+    case 'mapCiudad': { const h = await cargarMapa(); enRecorrido = false; ciudadCine = null; hotelSel = null; ciudadSel = v || null; h.vistaColombia(0); if (v) est?.volarCiudad(h.viewer as never, v); else est?.verTodos(h.viewer as never); renderOv(); return; }
+    case 'mapHotel': { if (v === 'fontana') { location.hash = 'hoteles/la-fontana'; return; } const h = await cargarMapa(); est?.detenerCine(h.viewer as never); hotelSel = v; const x = HOTELES.find((q) => q.id === v)!; h.volarA(x.lon, x.lat, 5000); renderOv(); return; }
+    case 'mapTodos': { const h = await cargarMapa(); ciudadSel = null; enRecorrido = false; ciudadCine = null; hotelSel = null; h.vistaColombia(0); est?.verTodos(h.viewer as never); renderOv(); return; }
     case 'mapRecorrido': { const h = await cargarMapa(); if (enRecorrido) { est?.detenerCine(h.viewer as never); enRecorrido = false; ciudadCine = null; renderOv(); return; } enRecorrido = true; hotelSel = null; h.vistaColombia(0); renderOv(); void est?.recorrido(h.viewer as never, (c) => { ciudadCine = c; if (!c) enRecorrido = false; if (route === 'mapa' || route === '') renderOv(); }); return; }
     case 'asAbrir': { const pa = $('asisPanel'); pa.hidden = !pa.hidden; pintarPanelAs(); return; }
     case 'asCerrar': $('asisPanel').hidden = true; return;

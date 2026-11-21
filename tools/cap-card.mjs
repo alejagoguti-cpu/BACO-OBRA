@@ -1,0 +1,12 @@
+import puppeteer from 'puppeteer-core';
+const b = await puppeteer.launch({ executablePath: 'C:/Program Files/Google/Chrome/Application/chrome.exe', headless: 'new', args: ['--no-sandbox', '--use-angle=d3d11', '--ignore-gpu-blocklist', '--window-size=1600,900'] });
+const p = await b.newPage(); await p.setViewport({ width: 1600, height: 900 });
+const errs = []; p.on('pageerror', (e) => errs.push(e.message));
+const w = (ms) => new Promise((r) => setTimeout(r, ms));
+await p.goto('http://127.0.0.1:4321/BACO-OBRA/?demo#mapa', { waitUntil: 'networkidle2', timeout: 120000 }); await w(8000);
+await p.screenshot({ path: 'build/cap/k1.jpg', type: 'jpeg', quality: 78 });
+await p.evaluate(() => document.querySelector('[data-act="mapCiudad"][data-v="Bogotá"]').click()); await w(6000);
+await p.screenshot({ path: 'build/cap/k2.jpg', type: 'jpeg', quality: 78 });
+await p.evaluate(() => document.querySelector('[data-act="mapHotel"][data-v="fontana"]').click()); await w(25000);
+await p.screenshot({ path: 'build/cap/k3.jpg', type: 'jpeg', quality: 78 });
+console.log(errs.join('\n') || 'sin errores'); await b.close();

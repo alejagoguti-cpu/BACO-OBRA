@@ -1,0 +1,11 @@
+    <aside class="mapcard cities">
+      <div class="glass">
+        ${ciudadSel ? `<button class="cc-back" data-act="mapCiudad" data-v="">${ic('back', 2)} Todas las ciudades</button>
+          <p class="map-eyebrow">HOTELES ESTELAR · ${esc(ciudadSel.toUpperCase())}</p><h1>${esc(ciudadSel)}</h1>
+          <p class="muted" style="font-size:13px;margin:2px 0 10px">${HOTELES.filter((h) => h.ciudad === ciudadSel).length} ${HOTELES.filter((h) => h.ciudad === ciudadSel).length === 1 ? 'hotel' : 'hoteles'}</p>
+          <div class="cc-list">${HOTELES.filter((h) => h.ciudad === ciudadSel).map((h) => `<button class="cc-hotel ${h.obra ? 'obra' : ''}" data-act="mapHotel" data-v="${h.id}" aria-pressed="${hotelSel === h.id}"><span class="pin">${ic(h.obra ? 'build' : 'pin', 2)}</span><span><b>${esc(h.obra ? 'Hotel Estelar La Fontana' : h.nombre)}</b><small>${esc(h.dir)}${h.obra ? ' · remodelación Torre Suites · ver en 3D' : ''}</small></span>${ic('arrowR', 1.8)}</button>`).join('')}</div>`
+        : `<p class="map-eyebrow">PORTAFOLIO · COLOMBIA</p><h1>Hoteles <b>Estelar</b></h1>
+          <p class="muted" style="font-size:13px;margin:2px 0 10px">${HOTELES.length} hoteles en ${ciudades.length} ciudades · elige una ciudad</p>
+          <div class="cc-list">${[...ciudades].sort((a, b) => HOTELES.filter((h) => h.ciudad === b).length - HOTELES.filter((h) => h.ciudad === a).length || a.localeCompare(b)).map((c) => { const n = HOTELES.filter((h) => h.ciudad === c).length; const obra = HOTELES.some((h) => h.ciudad === c && h.obra); return `<button class="cc-city ${obra ? 'obra' : ''}" data-act="mapCiudad" data-v="${esc(c)}"><span><b>${esc(c)}</b><small>${n} ${n === 1 ? 'hotel' : 'hoteles'}${obra ? ' · La Fontana en obra' : ''}</small></span>${ic('chev', 2)}</button>`; }).join('')}</div>`}
+      </div>
+    </aside>

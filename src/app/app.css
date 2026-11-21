@@ -785,3 +785,21 @@ body[data-modo="pais"] .dock,body[data-modo="pais"] #hint,body[data-modo="pais"]
 #app .map-cine .ic{width:16px;height:16px}
 #app .map-ciudad{position:fixed;z-index:31;left:50%;top:96px;transform:translateX(-50%);font:300 clamp(30px,4vw,56px)/1 var(--f);color:#fff;letter-spacing:-.01em;text-shadow:0 4px 30px rgba(0,0,0,.55);pointer-events:none;animation:twIn .6s ease}
 #app .map-ciudad small{display:block;font:700 11px var(--f);letter-spacing:.2em;text-transform:uppercase;color:#E8C98A;margin-bottom:6px;text-align:center}
+
+#app .mapcard.cities{width:min(340px,calc(100vw - 120px));max-height:calc(100vh - 190px)}
+#app .mapcard.cities .glass{display:flex;flex-direction:column;max-height:calc(100vh - 190px)}
+#app .mapcard.cities h1{margin:2px 0 0;font-size:28px}
+#app .cc-list{display:flex;flex-direction:column;gap:4px;overflow:auto;margin:0 -6px;padding:0 6px}
+#app .cc-city,#app .cc-hotel,#app .cc-back{all:unset;box-sizing:border-box;cursor:pointer;display:flex;align-items:center;gap:10px;padding:10px 10px;border-radius:12px;color:var(--ink)}
+#app .cc-city:hover,#app .cc-hotel:hover{background:var(--soft)}
+#app .cc-city span,#app .cc-hotel span:not(.pin){flex:1;min-width:0}
+#app .cc-city b,#app .cc-hotel b{display:block;font-size:14.5px}
+#app .cc-city small,#app .cc-hotel small{display:block;font-size:12px;color:var(--muted)}
+#app .cc-city.obra b,#app .cc-hotel.obra b{color:#8C6F3A}
+#app .cc-city .ic,#app .cc-hotel>.ic{width:16px;height:16px;color:var(--muted)}
+#app .cc-hotel .pin{width:34px;height:34px;flex:none;border-radius:50%;display:grid;place-items:center;background:#0E3064;color:#fff}
+#app .cc-hotel.obra .pin{background:#B79E66}
+#app .cc-hotel .pin .ic{width:16px;height:16px;color:#fff}
+#app .cc-hotel[aria-pressed="true"]{background:rgba(14,48,100,.08)}
+#app .cc-back{padding:6px 8px;font-size:12.5px;font-weight:700;color:var(--muted);align-self:flex-start;margin-bottom:4px}
+#app .cc-back .ic{width:15px;height:15px}

@@ -133,3 +133,13 @@ export async function recorrido(viewer: Cesium.Viewer, onCiudad: (c: string | nu
   onCiudad(null);
   if (yo === cancelado) verTodos(viewer);
 }
+
+/** vuelo cinematográfico a una ciudad encuadrando todos sus hoteles */
+export function volarCiudad(viewer: Cesium.Viewer, ciudad: string): void {
+  detenerCine(viewer);
+  const hs = HOTELES.filter((h) => h.ciudad === ciudad); if (!hs.length) return;
+  const lon = hs.reduce((a, h) => a + h.lon, 0) / hs.length, lat = hs.reduce((a, h) => a + h.lat, 0) / hs.length;
+  const ext = Math.max(0.01, ...hs.map((h) => Math.hypot(h.lon - lon, h.lat - lat)));
+  const alt = Math.min(60000, Math.max(9000, ext * 220000));
+  viewer.camera.flyTo({ destination: Cesium.Cartesian3.fromDegrees(lon, lat - alt / 125000, alt * 1.15), orientation: { heading: 0, pitch: Cesium.Math.toRadians(-48), roll: 0 }, duration: 3.2, easingFunction: Cesium.EasingFunction.QUADRATIC_IN_OUT });
+}
