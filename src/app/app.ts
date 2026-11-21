@@ -24,7 +24,7 @@ app.innerHTML = `
 const $ = (id: string) => document.getElementById(id)!;
 
 const NAV: [string, string, string][] = [
-  ['mapa', 'Hoteles Colombia', 'globe'], ['plan', 'Planeación', 'plan'], ['obra', 'Modelo 3D', 'obra'],
+  ['mapa', 'Hoteles Colombia', 'globe'], ['plan', 'Planeación', 'plan'], ['bim', 'Modelo BIM', 'obra'],
   ['novedades', 'Novedades y QR', 'novedades'], ['habitacion-216', 'Habitación 216', 'eye'],
   ['panel', 'Resumen', 'panel'], ['ia', 'Asistente', 'spark'],
 ];
@@ -36,6 +36,7 @@ let habFiltro = '';
 let hotelSel: string | null = null;
 let mapOpen = false;
 let corteH = 6.15;
+let bimLayersOpen = false;
 let pendingPinFocus: [number, number, number] | null = null;
 let piso2Open = false;
 let modo360 = false;
@@ -82,7 +83,7 @@ function seleccionarHotel(id: string): void {
 let bim: Bim | null = null;
 let bimEsp = 'coo';
 let corte = true, fantasma = true;
-let guiaVista = false; try { guiaVista = localStorage.getItem('baco-obra-guia') === '1'; } catch { /* */ }
+let guiaVista = true;
 
 /* ---------------- guía de pasos con flechas ---------------- */
 const PASOS: [string, string][] = [['Hoteles', 'mapa'], ['Planeación', 'plan'], ['Modelo BIM', `bim-${S.espUser || 'arq'}`], ['Novedades', 'novedades'], ['Habitaciones', 'habitacion-216']];
@@ -134,17 +135,18 @@ function renderBimUi(): void {
     const hayOcultos = (bim?.ocultos.size ?? 0) > 0;
     host.insertAdjacentHTML('beforeend', `
     <div class="bimui bimbar">
-      <div class="glass bimtitle" style="padding:10px 18px 10px 10px"><button class="bim-back" data-act="bimVolver" aria-label="Volver a la torre">${ic('back')}<span>Volver a la torre</span></button><div><h2>Piso 2 · ${e.corto}</h2><small>Torre Suites · ${e.desc}</small></div></div>
+      <div class="glass bimtitle" style="padding:10px 18px 10px 10px"><button class="bim-back" data-act="bimVolver" aria-label="Volver a planeación">${ic('back')}<span>Planeación</span></button><div><h2>Piso 2 · ${e.corto}</h2><small>Torre Suites · ${e.desc}</small></div><img class="bim-logo" src="logos/estelar.png" alt="Hoteles Estelar"></div>
       ${pasos(bim?.reportando ? 3 : 2, 'bimpasos')}
       <div class="glass espbar">${ESPECIALIDADES.map((x) => `<button data-act="bimEsp" data-v="${x.id}" aria-pressed="${x.id === bimEsp}"><i style="background:${x.c}"></i>${x.corto}</button>`).join('')}</div>
     </div>
-    <div class="bimui glass legend">
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:2px"><b style="margin:0;color:var(--ink);font-size:13px">Capas (toca para aislar)</b>${hayOcultos ? `<button class="chip" data-act="bimResetGrupos" style="padding:3px 9px;font-size:11.5px">Ver todas</button>` : ''}</div>
+    <div class="bimui glass legend ${bimLayersOpen ? 'expanded' : ''}">
+      <button class="bim-legend-toggle" data-act="toggleBimLayers" aria-expanded="${bimLayersOpen}">${ic('layers')} Capas del modelo <span>${grupos.length} grupos</span>${ic('down')}</button>
+      <div class="legend-body"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:2px"><b style="margin:0;color:var(--ink);font-size:13px">Toca para aislar</b>${hayOcultos ? `<button class="chip" data-act="bimResetGrupos" style="padding:3px 9px;font-size:11.5px">Ver todas</button>` : ''}</div>
       ${grupos.filter((g) => GRUPOS[g]).map((g) => {
         const oc = bim?.ocultos.has(g) ?? false;
         return `<button type="button" class="leg-btn ${oc ? 'off' : ''}" data-act="bimToggleGrupo" data-v="${g}" data-g="${g}" aria-pressed="${!oc}"><i style="background:${GRUPOS[g].c}"></i><span>${GRUPOS[g].n}</span></button>`;
       }).join('')}
-      ${pinsVis ? `<div style="border-top:1px solid var(--line);padding-top:6px;margin-top:2px;font-size:12px;color:var(--muted)">${ic('pin', 1.8)} ${pinsVis} ${pinsVis === 1 ? 'novedad ubicada' : 'novedades ubicadas'} en 3D</div>` : ''}
+      ${pinsVis ? `<div style="border-top:1px solid var(--line);padding-top:6px;margin-top:2px;font-size:12px;color:var(--muted)">${ic('pin', 1.8)} ${pinsVis} ${pinsVis === 1 ? 'novedad ubicada' : 'novedades ubicadas'} en 3D</div>` : ''}</div>
     </div>
     <div id="bimHoverBadge" class="bimui glass bimhover" hidden></div>
     <div class="bimui bimtools">
@@ -243,7 +245,7 @@ function renderChrome(): void {
   const uSub = isCon ? `Frente ${eUser.corto} · Piso 2` : 'Hoteles Estelar · Propietario';
   const uInic = isCon ? eUser.corto.slice(0, 2).toUpperCase() : 'HE';
   const uBg = isCon ? `linear-gradient(135deg,${eUser.c},#141A21)` : 'linear-gradient(135deg,#C59B27,#16202B)';
-  $('rail').innerHTML = `<button class="logo" data-act="cambiarRol" title="BACO Studio · Cambiar perfil de acceso"><img src="logos/baco.png" alt="BACO"></button>` + nav.map(([k, l, i]) => `<a href="#${k}" ${base === k || (k === 'mapa' && base === '') || (k === 'novedades' && base === 'qr') ? 'aria-current="page"' : ''} aria-label="${l}">${ic(i)}<span class="lbl">${l}</span><span class="rtx">${l.split(' ')[0]}</span>${k === 'novedades' && ab ? `<span class="dot">${ab}</span>` : ''}</a>`).join('');
+  $('rail').innerHTML = `<button class="logo" data-act="cambiarRol" title="BACO Studio · Cambiar perfil de acceso"><img src="logos/baco.png" alt="BACO"></button>` + nav.map(([k, l, i]) => `<a href="#${k === 'bim' ? 'bim-' + (S.espUser || 'arq') : k}" ${base === k || (k === 'mapa' && base === '') || (k === 'novedades' && base === 'qr') ? 'aria-current="page"' : ''} aria-label="${l}">${ic(i)}<span class="lbl">${l}</span><span class="rtx">${l.split(' ')[0]}</span>${k === 'novedades' && ab ? `<span class="dot">${ab}</span>` : ''}</a>`).join('');
   $('topbar').innerHTML = `
     ${base !== 'mapa' && base !== '' ? `<a class="scene-back" href="${base === 'plan' || base === 'obra' ? '#mapa' : base === 'bim' ? '#plan' : base === 'novedades' ? '#bim-' + (S.espUser || 'arq') : '#novedades'}" aria-label="Volver al paso anterior">${ic('back')}<span>Volver</span></a>` : ''}
     <form class="search" id="fBuscar" role="search">${ic('search')}<input id="q" list="sugerencias" placeholder="Buscar hotel, habitación (214–225) o novedad…" aria-label="Buscar hotel o habitación"><datalist id="sugerencias">${HOTELES.map((h) => `<option value="${esc(h.nombre)}">`).join('')}${UBICACIONES.map(([, t]) => `<option value="${esc(t)}">`).join('')}</datalist><button class="circle" type="submit" aria-label="Buscar">${ic('filter')}</button></form>
@@ -613,7 +615,8 @@ app.addEventListener('click', async (ev) => {
     case 'irBim': cerrarHoja(); location.hash = 'bim-' + v; return;
     case 'abrirBim': cerrarHoja(); habAbierta = ''; location.hash = 'bim-' + v; return;
     case 'bimEsp': bimEsp = v; history.replaceState(null, '', '#bim-' + v); route = 'bim-' + v; void bim?.abrir(v).then(renderBimUi); renderBimUi(); return;
-    case 'bimVolver': location.hash = W.HLF ? 'obra' : 'panel'; return;
+    case 'bimVolver': location.hash = 'plan'; return;
+    case 'toggleBimLayers': bimLayersOpen = !bimLayersOpen; renderBimUi(); return;
     case 'bimCorte': corte = !corte; bim?.setCorte(corte); renderBimUi(); return;
     case 'bimFantasma': fantasma = !fantasma; bim?.setFantasma(fantasma); renderBimUi(); return;
     case 'bimToggleGrupo': bim?.toggleGrupo(v); renderBimUi(); return;
@@ -643,7 +646,7 @@ app.addEventListener('click', async (ev) => {
       const n = listaNovedades().find((x) => x.id === v);
       if (n) {
         cerrarHoja(); habAbierta = '';
-        if (n.pos) pendingPinFocus = n.pos;
+        if (n.pos) pendingPinFocus = [n.pos[0], n.pos[1], n.pos[2] - (n.ej ? 12 : 0)];
         if (location.hash === '#bim-' + n.esp && bim) {
           if (pendingPinFocus) { bim.enfocar(pendingPinFocus); pendingPinFocus = null; }
         } else {

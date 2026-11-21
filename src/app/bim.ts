@@ -48,7 +48,7 @@ export function crearBim(host: HTMLElement): Bim {
   renderer.setPixelRatio(Math.min(2, devicePixelRatio));
   renderer.setClearColor(0x000000, 0);
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.05;
+  renderer.toneMappingExposure = 0.82;
   renderer.localClippingEnabled = true;
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -56,8 +56,8 @@ export function crearBim(host: HTMLElement): Bim {
   const scene = new THREE.Scene();
   const pm = new THREE.PMREMGenerator(renderer);
   scene.environment = pm.fromScene(new RoomEnvironment(), 0.04).texture;
-  scene.add(new THREE.HemisphereLight('#f6f9fc', '#a8a196', 0.85));
-  const sol = new THREE.DirectionalLight('#fff4e2', 2.2);
+  scene.add(new THREE.HemisphereLight('#f6f9fc', '#a8a196', 0.7));
+  const sol = new THREE.DirectionalLight('#fff4e2', 1.5);
   sol.position.set(40, 80, 30); sol.castShadow = true; sol.shadow.mapSize.set(2048, 2048);
   Object.assign(sol.shadow.camera, { left: -50, right: 50, top: 50, bottom: -50, near: 5, far: 200 });
   sol.shadow.bias = -0.0006;
@@ -174,7 +174,10 @@ export function crearBim(host: HTMLElement): Bim {
       if (!n.pos) continue;
       const e = ESPECIALIDADES.find((x) => x.id === n.esp);
       const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: pinTex(n.estado === 'Cerrada' ? '#8a96a3' : e?.c ?? '#1FA58C'), depthTest: false }));
-      sp.center.set(0.5, 0.06); sp.scale.set(1.3, 1.7, 1); sp.position.set(...n.pos); sp.renderOrder = 10;
+      sp.center.set(0.5, 0.06); sp.scale.set(1.3, 1.7, 1);
+      // Las cinco novedades de ejemplo usan coordenadas del prototipo anterior.
+      // Las nuevas posiciones marcadas por el usuario ya están en ejes del modelo actual.
+      sp.position.set(n.pos[0], n.pos[1], n.pos[2] - (n.ej ? 12 : 0)); sp.renderOrder = 10;
       sp.userData = { id: n.id };
       pinGroup.add(sp);
     }
@@ -280,7 +283,7 @@ export function crearBim(host: HTMLElement): Bim {
         aplicar();
         if (primera) {
           controls.target.copy(centro);
-          hacia.set(centro.x + 38, centro.y + 46, centro.z + 52);
+          hacia.set(centro.x + 42, centro.y + 50, centro.z + 57);
           desde.set(centro.x + 90, centro.y + 140, centro.z + 120);
           camera.position.copy(desde); t0 = performance.now(); anim = 1; camOnly = false;
         }
@@ -297,7 +300,7 @@ export function crearBim(host: HTMLElement): Bim {
     resetGrupos() { ocultos.clear(); aplicar(); },
     resetCamara() {
       desde.copy(camera.position);
-      hacia.set(centro.x + 38, centro.y + 46, centro.z + 52);
+      hacia.set(centro.x + 42, centro.y + 50, centro.z + 57);
       targetDesde.copy(controls.target);
       targetHacia.copy(centro);
       t0 = performance.now(); anim = 1; camOnly = true;

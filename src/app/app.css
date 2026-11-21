@@ -743,3 +743,31 @@ body[data-modo="pais"] #cesiumContainer{background:radial-gradient(circle at 73%
 .plan-next{border:1px solid #ded9cf;background:#fffefa;border-radius:13px;padding:20px}.plan-next h3{font:500 19px 'Space Grotesk',Arial,sans-serif;letter-spacing:-.03em;margin:0}.plan-next p{font-size:11px;line-height:1.5;color:#7a746b;margin:9px 0 14px}.plan-next a{display:flex;align-items:center;justify-content:space-between;color:#0e3064;text-decoration:none;font-weight:700;font-size:12px;border-top:1px solid #e3ded6;padding-top:12px}.plan-next a:hover{color:#b59535}
 @media(max-width:1050px){.plan-dashboard{grid-template-columns:1fr}.plan-side{display:grid;grid-template-columns:1fr 1fr}.plan-summary{min-height:0}.plan-big{margin:20px 0}}
 @media(max-width:680px){.plan-intro{align-items:start;flex-direction:column}.plan-intro-actions{width:100%}.plan-intro-actions .btn{flex:1}.plan-lanes{grid-template-columns:1fr}.plan-side{grid-template-columns:1fr}.plan-rooms{grid-template-columns:repeat(4,minmax(0,1fr))}.plan-room{padding:7px;min-height:104px}.plan-room em{display:none}.plan-floor{padding:14px}.plan-section-head small{display:none}}
+/* Visor BIM: lienzo despejado y controles sobre el modelo. */
+#app [hidden]{display:none!important}
+#app #bim{background:radial-gradient(900px 580px at 52% 46%,#fefdfa,#e2ded6 95%)}
+#app #bim .bimbar{z-index:2;align-items:center;gap:8px}
+#app #bim .bimtitle{background:#fffefa;border:1px solid #e2dcd2;border-radius:12px;box-shadow:0 12px 30px #0e306415;gap:12px;min-width:340px}
+#app #bim .bimtitle h2{font:600 18px 'Space Grotesk',Arial,sans-serif;letter-spacing:-.03em;color:#0e3064}
+#app #bim .bimtitle small{font-size:10px;color:#7a746b}
+#app #bim .bim-back{display:flex;align-items:center;gap:5px;padding:9px 10px;border-radius:7px;background:#0e3064;color:#fff;font-size:11px;font-weight:700;white-space:nowrap}
+#app #bim .bim-logo{width:30px;height:30px;object-fit:contain;margin-left:auto}
+#app #bim .bimpasos{background:#fffefa;border:1px solid #e2dcd2;border-radius:10px;box-shadow:0 12px 30px #0e306415}
+#app #bim .espbar{order:3;flex-basis:100%;width:max-content;max-width:max-content;margin:0 0 0 auto;background:#fffefa;border:1px solid #e2dcd2;border-radius:11px;box-shadow:0 12px 30px #0e306415}
+#app #bim .espbar button{font-size:11px;padding:7px 10px}
+#app #bim .legend{width:230px;max-height:48px;overflow:hidden;background:#fffefa;border:1px solid #e2dcd2;border-radius:10px;padding:5px 8px;box-shadow:0 12px 30px #0e306415}
+#app #bim .legend.expanded{max-height:min(56vh,430px);overflow:auto;padding-bottom:10px}
+#app #bim .legend .legend-body{display:none;flex-direction:column;gap:4px;padding:5px 3px}
+#app #bim .legend.expanded .legend-body{display:flex}
+#app #bim .bim-legend-toggle{display:flex;align-items:center;gap:7px;width:100%;padding:6px 3px;color:#0e3064;font-size:12px;font-weight:700;text-align:left}
+#app #bim .bim-legend-toggle span{margin-left:auto;color:#7a746b;font-size:10px;font-weight:500}
+#app #bim .bim-legend-toggle .ic:last-child{width:14px;height:14px;transform:rotate(-90deg);transition:transform .2s}
+#app #bim .legend.expanded .bim-legend-toggle .ic:last-child{transform:rotate(180deg)}
+#app #bim .bimtools{z-index:2;flex-direction:row;align-items:center;gap:6px}
+#app #bim .bimtools>div{gap:5px!important}
+#app #bim .bimtools .circle{width:36px;height:36px}
+#app #bim .tg{border-radius:9px;padding:6px 10px;font-size:10px;background:#fffefa;border:1px solid #e2dcd2;box-shadow:0 7px 20px #0e306416}
+#app #bim .tg .sw2{width:29px;height:18px}.tg .sw2::after{width:12px;height:12px}.tg[aria-pressed="true"] .sw2::after{left:14px}
+#app #bim .report{border-radius:9px;background:#b59535;color:#fff;padding:11px 14px;font-size:11px;box-shadow:0 8px 22px #b595354d}
+@media(max-width:850px){#app #bim .bimbar{right:10px;left:10px}#app #bim .bimtitle{min-width:0;width:100%}#app #bim .bimpasos{display:none}#app #bim .espbar{overflow-x:auto;max-width:100%;flex-basis:auto;margin:0;width:100%;flex-wrap:nowrap}#app #bim .espbar button{white-space:nowrap}#app #bim .bimtools{left:10px;right:10px;bottom:10px;flex-wrap:wrap;justify-content:flex-end}#app #bim .bimtools label{display:none}#app #bim .legend{left:10px;bottom:95px}}
+#app #bim{background:radial-gradient(900px 580px at 52% 46%,#eeeae2,#d9d7d1 95%)}
