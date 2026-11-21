@@ -3,10 +3,10 @@
    elegir especialidad → modelo 3D del Piso 2 → reportar novedades (también desde QR en obra). */
 import './app.css';
 import { ESPECIALIDADES, HOTELES, TIPOS, UBICACIONES, type Novedad } from './data';
-import { S, save, reset, listaNovedades, cargarNovedades, agregarNovedad, actualizarNovedad, nuevoId, comprimirFoto } from './store';
+import { S, save, reset, compartido, listaNovedades, cargarNovedades, agregarNovedad, actualizarNovedad, nuevoId, comprimirFoto } from './store';
 import { countUp, esc, ic, toast } from './ui';
 import { OBRA, cargarObra, marcar, porEsp, porHab, porFrente, realAct, fechaCorta, total as totalObra } from './obra';
-import { T, espDe, ubic, vAvance, vEntregables, vHonorarios, vNovedades, vPanel, vProveedores, vQR, vAsistente, responderIA, WA_LOG_SEED, type WaEntry, rowNov } from './pages';
+import { T, espDe, ubic, vAvance, vEntregables, vHonorarios, vPanel, vProveedores, vQR, vAsistente, responderIA, WA_LOG_SEED, type WaEntry, rowNov } from './pages';
 import type { Bim } from './bim';
 
 interface HLFApi { entrar(): Promise<void>; vistaColombia(d?: number): void; volarA(lon: number, lat: number, alt?: number, dur?: number): void; viewer: { useDefaultRenderLoop: boolean }; readonly modo: 'pais' | 'sitio'; piso2(): void; completo(): void }
@@ -488,12 +488,32 @@ function vPlanPiso2(): string {
     <aside class="plan-side"><div class="plan-summary"><span class="plan-kicker">CONTROL DE AVANCE</span><h2>Visión general</h2><div class="plan-big"><strong>${pct(overall.real)}<i>%</i></strong><small>avance ejecutado en la matriz</small></div><div class="plan-meter"><div><span>Ejecutado</span><b>${pct(overall.real)}%</b></div><i><span style="width:${pct(overall.real)}%"></span></i></div><div class="plan-meter muted"><div><span>Programado</span><b>${pct(overall.prog)}%</b></div><i><span style="width:${pct(overall.prog)}%"></span></i></div><div class="plan-summary-foot"><span>${overall.hechas} actividades completadas</span><span>${overall.n} actividades en matriz</span></div></div><div class="plan-next"><span class="plan-kicker">SIGUIENTE PASO</span><h3>Inspecciona el modelo.</h3><p>Entra al BIM con tu especialidad para ver sistemas, elementos y puntos de novedad.</p><a href="#bim-${S.espUser || 'arq'}">Explorar BIM ${ic('arrowR')}</a></div></aside></div>
   </div>`;
 }
+function vNovedadesPiso2(): string {
+  const all = listaNovedades();
+  const query = filtroNov.q.trim().toLowerCase();
+  const items = all.filter(n =>
+    (filtroNov.esp === 'todas' || n.esp === filtroNov.esp) &&
+    (filtroNov.est === 'todas' || (filtroNov.est === 'abiertas' ? n.estado !== 'Cerrada' : n.estado === 'Cerrada')) &&
+    (!query || [n.txt, n.id, ubic(n.loc), n.quien].some(x => x.toLowerCase().includes(query)))
+  );
+  const open = all.filter(n => n.estado !== 'Cerrada');
+  const high = open.filter(n => n.prio === 'Alta');
+  const locations = [...new Set(all.map(n => n.loc))].map(loc => ({ loc, count: all.filter(n => n.loc === loc).length }));
+  return `<div class="nov-screen">
+    <header class="nov-intro"><div><p class="plan-kicker">04 / 05 · ESTELAR LA FONTANA</p><h1>Novedades del <b>piso 2.</b></h1><p>Consulta los reportes por habitación o especialidad. Cada punto registrado en el BIM abre su detalle aquí.</p></div><div class="nov-actions"><button class="btn pri" data-act="reportar">${ic('pin')} Nueva novedad</button><a class="btn" href="#qr">${ic('novedades')} Códigos QR</a></div></header>
+    <div class="nov-stats"><div><span>REGISTRADAS</span><b>${all.length}</b><small>en el prototipo</small></div><div><span>ABIERTAS</span><b>${open.length}</b><small>pendientes de resolver</small></div><div><span>PRIORIDAD ALTA</span><b>${high.length}</b><small>requieren atención</small></div><div><span>EN EL MODELO</span><b>${all.filter(n => n.pos).length}</b><small>con punto 3D</small></div></div>
+    <div class="nov-layout"><section class="nov-register"><div class="nov-register-head"><div><span>BITÁCORA / REGISTRO</span><h2>${filtroNov.est === 'abiertas' ? 'Pendientes' : filtroNov.est === 'cerradas' ? 'Cerradas' : 'Todas las novedades'} <small>${items.length}</small></h2></div><label class="nov-search">${ic('search')}<input id="qNov" value="${esc(filtroNov.q)}" placeholder="Buscar habitación, ID o descripción" aria-label="Filtrar novedades"></label></div>
+    <div class="nov-filters"><div class="chiprow"><button class="chip" data-act="fEsp" data-v="todas" aria-pressed="${filtroNov.esp === 'todas'}">Todas</button>${ESPECIALIDADES.filter(e => e.id !== 'coo').map(e => `<button class="chip" data-act="fEsp" data-v="${e.id}" aria-pressed="${filtroNov.esp === e.id}"><span class="sw" style="background:${e.c}"></span>${e.corto}</button>`).join('')}</div><div class="seg">${[['abiertas','Abiertas'],['cerradas','Cerradas'],['todas','Todas']].map(([k,l]) => `<button data-act="fEst" data-v="${k}" aria-pressed="${filtroNov.est === k}">${l}</button>`).join('')}</div></div>
+    <div class="nov-list">${items.map(rowNov).join('') || '<p class="nov-empty">No hay novedades con este filtro.</p>'}</div><p class="nov-storage">${compartido() ? 'Sincronizado con base de datos compartida.' : 'Demostración local: los cambios se guardan en este dispositivo.'}</p></section>
+    <aside class="nov-side"><div class="nov-locations"><span class="plan-kicker">PISO 02 / UBICACIONES</span><h3>¿Dónde están?</h3>${locations.map(({loc,count}) => `<button data-act="${loc.startsWith('HAB-') ? 'habDetalle' : 'irRuta'}" data-v="${loc.startsWith('HAB-') ? loc.slice(4) : 'plan'}"><span>${esc(ubic(loc))}</span><b>${count}</b></button>`).join('')}</div><div class="nov-qr"><span class="plan-kicker">DESDE LA OBRA</span><h3>Un QR por habitación.</h3><p>El código abre el formulario con la ubicación preparada y permite adjuntar foto. El punto 3D se marca desde el visor BIM.</p><a href="#qr">Ver códigos QR ${ic('arrowR')}</a></div></aside></div>
+  </div>`;
+}
 function renderPage(): void {
   const page = $('page');
   const base = route.split('-')[0];
   if (!PAGES.includes(base)) { page.innerHTML = ''; page.className = ''; return; }
   const html = base === 'panel' ? vPanel() : base === 'ia' ? vAsistente(aiChat, waLog, modo360) : base === 'plan' ? vPlanPiso2() : base === 'avance' ? vAvance(habFiltro) : base === 'proveedores' ? vProveedores()
-    : base === 'novedades' ? vNovedades(filtroNov) : base === 'qr' ? vQR() : base === 'entregables' ? vEntregables() : vHonorarios();
+    : base === 'novedades' ? vNovedadesPiso2() : base === 'qr' ? vQR() : base === 'entregables' ? vEntregables() : vHonorarios();
   const y = page.scrollTop;
   const focusId = document.activeElement?.id;
   const selStart = (document.activeElement as HTMLInputElement | null)?.selectionStart ?? null;
