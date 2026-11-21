@@ -1,0 +1,10 @@
+import puppeteer from 'puppeteer-core';
+const b = await puppeteer.launch({ executablePath: 'C:/Program Files/Google/Chrome/Application/chrome.exe', headless: 'new', args: ['--no-sandbox', '--window-size=1823,863'] });
+const p = await b.newPage(); await p.setViewport({ width: 1823, height: 863 });
+await p.goto('http://127.0.0.1:4321/BACO-OBRA/#mapa', { waitUntil: 'networkidle2', timeout: 120000 }); await new Promise((r) => setTimeout(r, 4000));
+await p.evaluate(() => document.querySelector('[data-acc="tab"][data-v="cuenta"]')?.click()); await new Promise((r) => setTimeout(r, 800));
+await p.evaluate(() => document.querySelector('[data-acc="solicitar"]')?.click()); await new Promise((r) => setTimeout(r, 500));
+await p.screenshot({ path: 'build/cap/login.jpg', type: 'jpeg', quality: 80 });
+await p.setViewport({ width: 1366, height: 768 }); await new Promise((r) => setTimeout(r, 800));
+await p.screenshot({ path: 'build/cap/login2.jpg', type: 'jpeg', quality: 80 });
+await b.close();

@@ -11,6 +11,23 @@ let poll = 0; let tick = 0;
 let host: HTMLElement | null = null;
 let alEntrar: () => void = () => {};
 let msg = '';
+const SVG = {
+  mail: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3.5 6.5 8.5 6.5 8.5-6.5"/></svg>',
+  lock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4.5" y="10.5" width="15" height="10" rx="2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/><circle cx="12" cy="15.5" r="1.2"/></svg>',
+  ojo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2.5 12s3.5-6.5 9.5-6.5 9.5 6.5 9.5 6.5-3.5 6.5-9.5 6.5S2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="3"/><path d="m4 4 16 16"/></svg>',
+  info: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>',
+  capas: '<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M24 8 4 17l20 9 20-9-20-9Z"/><path d="m4 24 20 9 20-9"/><path d="m4 31 20 9 20-9"/></svg>',
+  barras: '<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="6" y="28" width="7" height="12"/><rect x="20" y="18" width="7" height="22"/><rect x="34" y="6" width="7" height="34"/></svg>',
+  persona: '<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="24" cy="15" r="8"/><path d="M8 42c1-9 7.5-14 16-14s15 5 16 14"/></svg>',
+  escudo: '<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M24 5 8 11v11c0 10 7 17 16 21 9-4 16-11 16-21V11L24 5Z"/><path d="m17 24 5 5 9-10"/></svg>',
+};
+const ARTE = `<div class="acc-art" aria-hidden="true"><i class="acc-arc a1"></i><i class="acc-arc a2"></i>
+  <img class="acc-eco" src="logos/ecoestelar-blanco.png" alt="">
+  <div class="acc-cap"><span class="acc-k">PLATAFORMA BIM</span><i class="acc-rule"></i>
+    <h2>El futuro se construye <b>antes de construir.</b></h2>
+    <p>La transformación de Estelar comienza con BIM. Una nueva forma de visualizar, coordinar y gestionar cada espacio antes, durante y después de su intervención.</p>
+    <ul class="acc-ben"><li>${SVG.capas}<b>Detectar<br>interferencias</b></li><li>${SVG.barras}<b>Cuantificar<br>con exactitud</b></li><li>${SVG.persona}<b>Perfiles<br>claros</b></li><li>${SVG.escudo}<b>Menos<br>imprevistos</b></li></ul>
+  </div></div>`;
 
 const EST_TXT: Record<EstadoQR, [string, string]> = {
   esperando: ['Esperando escaneo', 'Escanea con la cámara de un teléfono donde ya tengas sesión iniciada.'],
@@ -61,14 +78,13 @@ function pintar(): void {
   if (!host) return;
   const sinBackend = !backendListo();
   host.innerHTML = `<div class="acc">
-    <div class="acc-art" aria-hidden="true"><div class="acc-grid"></div><div class="acc-cap"><span>HOTELES ESTELAR · GEMELO DIGITAL</span><b>Hotel Estelar La Fontana</b><small>Bogotá · Torre Suites · remodelación</small><ul class="acc-ben"><li><i>01</i><div><b>Detectar interferencias</b><small>Cruza la arquitectura con las redes sanitarias e hidráulicas antes de llegar a obra.</small></div></li><li><i>02</i><div><b>Cuantificar con exactitud</b><small>Cantidades exactas de cada elemento y accesorio, salidas del modelo y no de un estimado.</small></div></li><li><i>03</i><div><b>Perfiles claros</b><small>Cada persona entra con su rol y sabe qué le toca revisar, aprobar o ejecutar.</small></div></li><li><i>04</i><div><b>Menos imprevistos</b><small>Lo que se resuelve en el modelo no se paga dos veces en obra: reduce costos por imprevistos.</small></div></li></ul></div></div>
+    ${ARTE}
     <section class="acc-box" role="dialog" aria-label="Acceso a la plataforma">
-      <div class="acc-logos"><img src="logos/estelar.png" alt="Hoteles Estelar"><span></span><img src="logos/baco.png" alt="BACO Studio"></div>
       <div><p class="acc-over">Plataforma BIM · Acceso autorizado</p><h1>Ingresar</h1></div>
       ${sinBackend ? '<p class="acc-msg err">Backend de autenticación no configurado: faltan VITE_SUPABASE_URL y VITE_SUPABASE_KEY en .env.local.</p>' : ''}
       <div class="acc-tabs" role="tablist">
         <button role="tab" data-acc="tab" data-v="qr" aria-selected="${tab === 'qr'}">${ic('qr', 1.8)} Código QR</button>
-        <button role="tab" data-acc="tab" data-v="cuenta" aria-selected="${tab !== 'qr'}">${ic('mail', 1.8)} Con cuenta</button>
+        <button role="tab" data-acc="tab" data-v="cuenta" aria-selected="${tab !== 'qr'}">${ic('user', 1.8)} Con cuenta</button>
       </div>
       ${tab === 'qr' ? `
         <div class="qr-wrap">
@@ -81,10 +97,10 @@ function pintar(): void {
           </div>
         </div>` : tab === 'cuenta' ? `
         <form class="acc-form" id="fAccCuenta">
-          <label>Correo corporativo<input type="email" name="email" autocomplete="username" required></label>
-          <label>Contraseña<input type="password" name="clave" autocomplete="current-password" required></label>
+          <label>Correo corporativo<span class="acc-in">${SVG.mail}<input type="email" name="email" autocomplete="username" required></span></label>
+          <label>Contraseña<span class="acc-in">${SVG.lock}<input type="password" name="clave" autocomplete="current-password" required><button type="button" class="acc-ojo" data-acc="ojo" aria-label="Mostrar contraseña">${SVG.ojo}</button></span></label>
           <button class="acc-btn pri">Ingresar ${ic('arrowR', 2)}</button>
-          ${ACCESO_ABIERTO ? '<p class="acc-muted acc-fine">Prototipo con acceso abierto: entra con cualquier correo y una contraseña. La primera vez se crea tu cuenta; después usa la misma contraseña.</p>' : '<div class="acc-links"><button type="button" data-acc="tab" data-v="recuperar">¿Olvidaste tu contraseña?</button><span class="acc-muted">¿Sin cuenta? Pídela a administración</span></div>'}
+          ${ACCESO_ABIERTO ? '<p class="acc-muted acc-fine">Prototipo con acceso abierto: entra con cualquier correo y una contraseña. La primera vez se crea tu cuenta; después usa la misma contraseña.</p>' : '<div class="acc-links"><button type="button" data-acc="tab" data-v="recuperar">¿Olvidaste tu contraseña?</button><button type="button" data-acc="solicitar">Solicitar cuenta</button></div>'}
         </form>` : tab === 'registro' ? `
         <form class="acc-form" id="fAccRegistro">
           <label>Nombre completo<input name="nombre" autocomplete="name" required></label>
@@ -99,7 +115,7 @@ function pintar(): void {
           <button class="acc-btn pri">Enviar enlace de recuperación</button>
           <div class="acc-links"><button type="button" data-acc="tab" data-v="cuenta">Volver</button></div>
         </form>`}
-      ${msg && tab !== 'qr' ? `<p class="acc-msg">${esc(msg)}</p>` : ''}
+      ${msg && tab !== 'qr' ? `<p class="acc-msg acc-info">${SVG.info}<span>${esc(msg)}</span></p>` : ''}
       <p class="acc-foot">Prototipo BACO Studio para Hoteles Estelar · cada ingreso queda registrado (identidad, método, hora y dispositivo).</p>
     </section></div>`;
   if (tab === 'qr') { pintarEstado(); pintarCuenta(); }
@@ -109,6 +125,8 @@ async function onClick(ev: Event): Promise<void> {
   const b = (ev.target as HTMLElement).closest<HTMLElement>('[data-acc]'); if (!b) return;
   if (b.dataset.acc === 'tab') { tab = b.dataset.v as Tab; msg = ''; if (tab === 'qr') void nuevoQR(); else { detenerQR(); pintar(); } }
   if (b.dataset.acc === 'nuevoQR') void nuevoQR();
+  if (b.dataset.acc === 'ojo') { const inp = b.parentElement?.querySelector('input'); if (inp) inp.type = inp.type === 'password' ? 'text' : 'password'; }
+  if (b.dataset.acc === 'solicitar') { msg = 'Las cuentas las crea administración (BACO Studio). Pide la tuya a tu coordinador de obra.'; pintar(); }
 }
 async function onSubmit(ev: Event): Promise<void> {
   const f = ev.target as HTMLFormElement; if (!f.id.startsWith('fAcc')) return;
