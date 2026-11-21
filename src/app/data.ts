@@ -6,7 +6,7 @@
 
 export interface Hotel { id: string; nombre: string; ciudad: string; dir: string; lon: number; lat: number; obra?: boolean }
 export const HOTELES: Hotel[] = [
-  { id: 'fontana', nombre: 'Estelar La Fontana', ciudad: 'Bogotá', dir: 'Av. Calle 127 No. 15A-10', lon: -74.04145, lat: 4.70208, obra: true },
+  { id: 'fontana', nombre: 'Estelar La Fontana', ciudad: 'Bogotá', dir: 'Av. Calle 127 No. 15A-10', lon: -74.04338, lat: 4.704527, obra: true },
   { id: 'p93', nombre: 'Estelar Parque de la 93', ciudad: 'Bogotá', dir: 'Calle 93 No. 11-19', lon: -74.0486, lat: 4.6767 },
   { id: 'jones', nombre: 'Estelar Suites Jones', ciudad: 'Bogotá', dir: 'Calle 61 No. 5-39', lon: -74.0591, lat: 4.6452 },
   { id: 'c100', nombre: 'Estelar Calle 100', ciudad: 'Bogotá', dir: 'Calle 100 No. 14-46', lon: -74.0478, lat: 4.6858 },

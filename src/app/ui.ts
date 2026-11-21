@@ -41,6 +41,9 @@ const P: Record<string, string> = {
   wa: '<path d="M20 11.5a8.5 8.5 0 0 1-12.6 7.4L3 20l1.2-4.2A8.5 8.5 0 1 1 20 11.5z"/><path d="M9.5 8.8c-.3 0-.8.3-.8 1.2 0 1.4 1.3 3.2 2.9 4.2 1.4.9 2.5.9 3 .7.5-.2.9-.8 1-1.2.1-.3 0-.5-.2-.6l-1.3-.6c-.2-.1-.4 0-.6.2l-.5.6c-.2.2-.4.2-.7 0-.6-.3-1.5-1-2-1.8-.2-.3-.1-.5.1-.7l.4-.5c.2-.2.2-.4.1-.6l-.6-1.4c-.2-.3-.4-.5-.8-.5z"/>',
   mic: '<rect x="9" y="3.5" width="6" height="10" rx="3"/><path d="M5.5 10.5a6.5 6.5 0 0 0 13 0M12 17v3.5M8.5 20.5h7"/>',
   vr: '<circle cx="12" cy="12" r="9"/><ellipse cx="12" cy="12" rx="9" ry="3.8"/><path d="M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>',
+  play: '<path d="M8 5.5v13l10.5-6.5z"/>', pause: '<path d="M8.5 5.5v13M15.5 5.5v13"/>', rew: '<path d="M11 6.5 4.5 12l6.5 5.5zM19.5 6.5 13 12l6.5 5.5z"/>',
+  focus: '<circle cx="12" cy="12" r="3"/><path d="M4 8V4h4M20 8V4h-4M4 16v4h4M20 16v4h-4"/>', cube: '<path d="M12 3 4 7.5v9L12 21l8-4.5v-9z"/><path d="M4 7.5l8 4.5 8-4.5M12 12v9"/>',
+  qr: '<rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><path d="M14 14h2v2h-2zM18 18h2v2h-2zM14 18h2M18 14h2"/>', mail: '<rect x="3.5" y="5.5" width="17" height="13" rx="2"/><path d="m4 7 8 6 8-6"/>', side: '<rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><path d="M9 4.5v15"/>',
   send: '<path d="M21 3L10 14M21 3l-7 18-4-7-7-4z"/>',
 };
 export const ic = (k: string, sw = 1.8, cls = 'ic') => `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[k] ?? ''}</svg>`;

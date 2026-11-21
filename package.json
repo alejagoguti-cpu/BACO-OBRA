@@ -14,8 +14,10 @@
   "license": "ISC",
   "type": "module",
   "dependencies": {
+    "@supabase/supabase-js": "^2.45.4",
     "cesium": "^1.126.0",
     "fflate": "^0.8.3",
+    "gsap": "^3.12.5",
     "qrcode": "1.5.4",
     "three": "^0.170.0"
   },

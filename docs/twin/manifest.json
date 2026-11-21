@@ -1,0 +1,434 @@
+{
+ "fuente": "HLF_P2-P6.rvt (export por nivel)",
+ "enu": {
+  "e": -214.09217169557732,
+  "n": 270.9238323147715,
+  "z": 4.2
+ },
+ "extension": [
+  80.81588064847045,
+  54.982668049968964
+ ],
+ "niveles": [
+  {
+   "i": 0,
+   "nombre": "PISO 1",
+   "elev": 0,
+   "zmin": -1.158,
+   "zmax": 21,
+   "archivo": "nivel_0.bin",
+   "cats": [
+    {
+     "nombre": "barandas",
+     "vOff": 0,
+     "vLen": 6336,
+     "tOff": 25344,
+     "tLen": 3168
+    },
+    {
+     "nombre": "muros",
+     "vOff": 38016,
+     "vLen": 17442,
+     "uvOff": 107784,
+     "uvLen": 11628
+    },
+    {
+     "nombre": "paneles",
+     "vOff": 154296,
+     "vLen": 1008,
+     "tOff": 158328,
+     "tLen": 504
+    },
+    {
+     "nombre": "escaleras",
+     "vOff": 160344,
+     "vLen": 2880,
+     "tOff": 171864,
+     "tLen": 1464
+    },
+    {
+     "nombre": "ventanas",
+     "vOff": 177720,
+     "vLen": 20088,
+     "tOff": 258072,
+     "tLen": 10044
+    },
+    {
+     "nombre": "montantes",
+     "vOff": 298248,
+     "vLen": 2088,
+     "tOff": 306600,
+     "tLen": 1044
+    },
+    {
+     "nombre": "columnas",
+     "vOff": 310776,
+     "vLen": 2376,
+     "tOff": 320280,
+     "tLen": 1188
+    }
+   ]
+  },
+  {
+   "i": 1,
+   "nombre": "PISO 2",
+   "elev": 3,
+   "zmin": 2.75,
+   "zmax": 7,
+   "archivo": "nivel_1.bin",
+   "cats": [
+    {
+     "nombre": "barandas",
+     "vOff": 0,
+     "vLen": 9504,
+     "tOff": 38016,
+     "tLen": 4752
+    },
+    {
+     "nombre": "muros",
+     "vOff": 57024,
+     "vLen": 122490,
+     "uvOff": 546984,
+     "uvLen": 81660
+    },
+    {
+     "nombre": "paneles",
+     "vOff": 873624,
+     "vLen": 1008,
+     "tOff": 877656,
+     "tLen": 504
+    },
+    {
+     "nombre": "escaleras",
+     "vOff": 879672,
+     "vLen": 2970,
+     "tOff": 891552,
+     "tLen": 1512
+    },
+    {
+     "nombre": "vigas",
+     "vOff": 897600,
+     "vLen": 5442,
+     "tOff": 919368,
+     "tLen": 3780
+    },
+    {
+     "nombre": "ventanas",
+     "vOff": 934488,
+     "vLen": 58104,
+     "tOff": 1166904,
+     "tLen": 29052
+    },
+    {
+     "nombre": "puertas",
+     "vOff": 1283112,
+     "vLen": 38700,
+     "tOff": 1437912,
+     "tLen": 30600
+    },
+    {
+     "nombre": "losas",
+     "vOff": 1560312,
+     "vLen": 27306,
+     "tOff": 1669536,
+     "tLen": 16164
+    },
+    {
+     "nombre": "montantes",
+     "vOff": 1734192,
+     "vLen": 2592,
+     "tOff": 1744560,
+     "tLen": 1296
+    },
+    {
+     "nombre": "columnas",
+     "vOff": 1749744,
+     "vLen": 2904,
+     "tOff": 1761360,
+     "tLen": 1500
+    },
+    {
+     "nombre": "cubiertas",
+     "vOff": 1767360,
+     "vLen": 8784,
+     "uvOff": 1802496,
+     "uvLen": 5856
+    }
+   ]
+  },
+  {
+   "i": 2,
+   "nombre": "PISO 3",
+   "elev": 6,
+   "zmin": 5.75,
+   "zmax": 15,
+   "archivo": "nivel_2.bin",
+   "cats": [
+    {
+     "nombre": "barandas",
+     "vOff": 0,
+     "vLen": 14328,
+     "tOff": 57312,
+     "tLen": 7164
+    },
+    {
+     "nombre": "muros",
+     "vOff": 85968,
+     "vLen": 38880,
+     "uvOff": 241488,
+     "uvLen": 25920
+    },
+    {
+     "nombre": "paneles",
+     "vOff": 345168,
+     "vLen": 1008,
+     "tOff": 349200,
+     "tLen": 504
+    },
+    {
+     "nombre": "escaleras",
+     "vOff": 351216,
+     "vLen": 5724,
+     "tOff": 374112,
+     "tLen": 2892
+    },
+    {
+     "nombre": "ventanas",
+     "vOff": 385680,
+     "vLen": 55152,
+     "tOff": 606288,
+     "tLen": 27576
+    },
+    {
+     "nombre": "losas",
+     "vOff": 716592,
+     "vLen": 1512,
+     "tOff": 722640,
+     "tLen": 972
+    },
+    {
+     "nombre": "montantes",
+     "vOff": 726528,
+     "vLen": 2592,
+     "tOff": 736896,
+     "tLen": 1296
+    },
+    {
+     "nombre": "columnas",
+     "vOff": 742080,
+     "vLen": 1800,
+     "tOff": 749280,
+     "tLen": 900
+    }
+   ]
+  },
+  {
+   "i": 3,
+   "nombre": "PISO 4",
+   "elev": 9,
+   "zmin": 8.75,
+   "zmax": 13.214,
+   "archivo": "nivel_3.bin",
+   "cats": [
+    {
+     "nombre": "barandas",
+     "vOff": 0,
+     "vLen": 14328,
+     "tOff": 57312,
+     "tLen": 7164
+    },
+    {
+     "nombre": "muros",
+     "vOff": 85968,
+     "vLen": 19476,
+     "uvOff": 163872,
+     "uvLen": 12984
+    },
+    {
+     "nombre": "paneles",
+     "vOff": 215808,
+     "vLen": 1008,
+     "tOff": 219840,
+     "tLen": 504
+    },
+    {
+     "nombre": "escaleras",
+     "vOff": 221856,
+     "vLen": 5724,
+     "tOff": 244752,
+     "tLen": 2892
+    },
+    {
+     "nombre": "ventanas",
+     "vOff": 256320,
+     "vLen": 55152,
+     "tOff": 476928,
+     "tLen": 27576
+    },
+    {
+     "nombre": "losas",
+     "vOff": 587232,
+     "vLen": 1404,
+     "tOff": 592848,
+     "tLen": 912
+    },
+    {
+     "nombre": "montantes",
+     "vOff": 596496,
+     "vLen": 2592,
+     "tOff": 606864,
+     "tLen": 1296
+    },
+    {
+     "nombre": "columnas",
+     "vOff": 612048,
+     "vLen": 1800,
+     "tOff": 619248,
+     "tLen": 900
+    }
+   ]
+  },
+  {
+   "i": 4,
+   "nombre": "PISO 5",
+   "elev": 12,
+   "zmin": 11.75,
+   "zmax": 16.214,
+   "archivo": "nivel_4.bin",
+   "cats": [
+    {
+     "nombre": "barandas",
+     "vOff": 0,
+     "vLen": 16200,
+     "tOff": 64800,
+     "tLen": 9780
+    },
+    {
+     "nombre": "muros",
+     "vOff": 103920,
+     "vLen": 26136,
+     "uvOff": 208464,
+     "uvLen": 17424
+    },
+    {
+     "nombre": "escaleras",
+     "vOff": 278160,
+     "vLen": 5724,
+     "tOff": 301056,
+     "tLen": 2892
+    },
+    {
+     "nombre": "ventanas",
+     "vOff": 312624,
+     "vLen": 60624,
+     "tOff": 555120,
+     "tLen": 30312
+    },
+    {
+     "nombre": "losas",
+     "vOff": 676368,
+     "vLen": 1242,
+     "tOff": 681336,
+     "tLen": 816
+    },
+    {
+     "nombre": "montantes",
+     "vOff": 684600,
+     "vLen": 504,
+     "tOff": 686616,
+     "tLen": 252
+    },
+    {
+     "nombre": "columnas",
+     "vOff": 687624,
+     "vLen": 1584,
+     "tOff": 693960,
+     "tLen": 792
+    }
+   ]
+  },
+  {
+   "i": 5,
+   "nombre": "PISO 6",
+   "elev": 15,
+   "zmin": 14.75,
+   "zmax": 18,
+   "archivo": "nivel_5.bin",
+   "cats": [
+    {
+     "nombre": "muros",
+     "vOff": 0,
+     "vLen": 14220,
+     "uvOff": 56880,
+     "uvLen": 9480
+    },
+    {
+     "nombre": "paneles",
+     "vOff": 94800,
+     "vLen": 20304,
+     "tOff": 176016,
+     "tLen": 10152
+    },
+    {
+     "nombre": "losas",
+     "vOff": 216624,
+     "vLen": 1260,
+     "tOff": 221664,
+     "tLen": 828
+    },
+    {
+     "nombre": "montantes",
+     "vOff": 224976,
+     "vLen": 40824,
+     "tOff": 388272,
+     "tLen": 20412
+    },
+    {
+     "nombre": "columnas",
+     "vOff": 469920,
+     "vLen": 1368,
+     "tOff": 475392,
+     "tLen": 684
+    },
+    {
+     "nombre": "cubiertas",
+     "vOff": 478128,
+     "vLen": 324,
+     "uvOff": 479424,
+     "uvLen": 216
+    }
+   ]
+  },
+  {
+   "i": 6,
+   "nombre": "CUBIERTA",
+   "elev": 18,
+   "zmin": 17.75,
+   "zmax": 22.879,
+   "archivo": "nivel_6.bin",
+   "cats": [
+    {
+     "nombre": "montantes",
+     "vOff": 0,
+     "vLen": 10152,
+     "tOff": 40608,
+     "tLen": 5076
+    },
+    {
+     "nombre": "losas",
+     "vOff": 60912,
+     "vLen": 342,
+     "tOff": 62280,
+     "tLen": 216
+    },
+    {
+     "nombre": "cubiertas",
+     "vOff": 63144,
+     "vLen": 756,
+     "uvOff": 66168,
+     "uvLen": 504
+    }
+   ]
+  }
+ ]
+}

@@ -8,26 +8,36 @@ import { countUp, esc, ic, toast } from './ui';
 import { OBRA, cargarObra, marcar, porEsp, porHab, porFrente, realAct, fechaCorta, total as totalObra } from './obra';
 import { T, espDe, ubic, vAvance, vEntregables, vHonorarios, vPanel, vProveedores, vQR, vAsistente, responderIA, WA_LOG_SEED, type WaEntry, rowNov } from './pages';
 import type { Bim } from './bim';
+import './shell.css';
+import { iniciarAuth, perfil, salir, alCambiarSesion, ROL_TXT } from './auth';
+import { mostrarAcceso, cerrarAcceso, mostrarAprobacion, mostrarNuevaClave } from './login';
+import { conectarPresencia, desconectarPresencia, alCambiarPresencia, informarUbicacion, type Presente } from './presence';
+import { montarWorkspace, abrirWorkspace, ocultarWorkspace, parseRuta, migas } from '../twin/workspace';
 
 interface HLFApi { entrar(): Promise<void>; vistaColombia(d?: number): void; volarA(lon: number, lat: number, alt?: number, dur?: number): void; viewer: { useDefaultRenderLoop: boolean }; readonly modo: 'pais' | 'sitio'; piso2(): void; completo(): void }
 const W = window as unknown as { HLF?: HLFApi };
 
 const app = document.getElementById('app')!;
 app.innerHTML = `
-  <nav class="rail" id="rail" aria-label="Secciones"></nav>
+  <nav class="rail side" id="rail" aria-label="Secciones"></nav>
   <div class="topbar" id="topbar"></div>
   <div id="ov"></div>
   <div id="page"></div>
   <div id="bim" hidden></div>
   <div id="prototype"></div>
+  <div id="twin" hidden></div>
   <div id="layer"></div>`;
 const $ = (id: string) => document.getElementById(id)!;
 
 const NAV: [string, string, string][] = [
-  ['mapa', 'Hoteles Colombia', 'globe'], ['plan', 'Planeación', 'plan'], ['bim', 'Modelo BIM', 'obra'],
+  ['mapa', 'Hoteles Colombia', 'globe'], ['fontana', 'Gemelo La Fontana', 'cube'], ['plan', 'Planeación', 'plan'], ['bim', 'Modelo BIM', 'obra'],
   ['novedades', 'Novedades y QR', 'novedades'], ['habitacion-216', 'Habitación 216', 'eye'],
   ['panel', 'Resumen', 'panel'], ['ia', 'Asistente', 'spark'],
 ];
+const NAV_SEC: [string, string[]][] = [['Exploración espacial', ['mapa', 'fontana', 'bim', 'habitacion-216']], ['Gestión de obra', ['plan', 'novedades', 'panel', 'ia']]];
+let compacta = false; try { compacta = localStorage.getItem('baco-side') === 'compacta'; } catch { /* */ }
+document.body.classList.toggle('side-compact', compacta);
+let presentes: Presente[] = [];
 const PAGES = ['panel', 'ia', 'plan', 'avance', 'proveedores', 'novedades', 'qr', 'entregables', 'honorarios'];
 let route = ''; let anim = true;
 let disposePrototype: (() => void) | null = null;
@@ -41,14 +51,7 @@ let pendingPinFocus: [number, number, number] | null = null;
 let piso2Open = false;
 let modo360 = false;
 const waLog: WaEntry[] = WA_LOG_SEED.map((w) => ({ ...w }));
-const aiChat: { q: string; resp: string; fuente: string; accion?: [string, string, string] }[] = [
-  {
-    q: '¿Cómo va el avance general del piso 2 vs. lo programado?',
-    resp: 'El **Piso 2 de Torre Suites (12 habitaciones, 3 frentes)** registra un **avance general real del 26%** frente al **30% programado** en la matriz de obra. **Arquitectura (34%)** y **Estructura (52%)** lideran el ritmo, mientras que **Hidrosanitaria (22%)** tiene una interferencia activa en Hab. 216.',
-    fuente: 'Índice unificado BACO IA: Cronograma HE La Fontana + Modelo Revit/MEP + Bitácora WhatsApp',
-    accion: ['irRuta', 'avance', 'Ver Curva S y habitaciones'],
-  },
-];
+const aiChat: { q: string; resp: string; fuente: string; accion?: [string, string, string] }[] = [];
 
 /* ---------------- tema ---------------- */
 try { const t = localStorage.getItem('baco-obra-tema'); if (t) document.documentElement.dataset.theme = t; } catch { /* */ }
@@ -72,6 +75,7 @@ function cargarMapa(): Promise<HLFApi> {
 function pausarMapa(p: boolean): void { if (W.HLF) W.HLF.viewer.useDefaultRenderLoop = !p; }
 
 function seleccionarHotel(id: string): void {
+  if (id === 'fontana') { location.hash = 'hoteles/la-fontana'; return; }
   hotelSel = id;
   const h = HOTELES.find((x) => x.id === id)!;
   if (location.hash !== '#mapa' && location.hash !== '') { location.hash = 'mapa'; }
@@ -171,7 +175,6 @@ function renderBimUi(): void {
 /* ---------------- portal de acceso (login Estelar vs. Contratistas) ---------------- */
 let loginChoice: 'estelar' | 'contratista' = S.rol ?? 'estelar';
 let loginEsp = S.espUser || 'arq';
-let loginNombre = S.nombreUser || '';
 
 function renderMapVisual(interactive: boolean): string {
   const cities = [...new Set(HOTELES.map((h) => h.ciudad))];
@@ -190,73 +193,78 @@ function renderMapVisual(interactive: boolean): string {
 }
 
 function renderLogin(): void {
-  $('layer').innerHTML = `<div class="login-gate live-map">
-    ${renderMapVisual(false)}
-    <form class="login-box" id="fLogin" role="dialog" aria-label="Portal de Acceso BACO Obra">
-      <div class="login-head">
-        <div class="login-logos">
-          <img src="logos/baco.png" alt="BACO Studio">
-          <span class="lsep"></span>
-          <img src="logos/estelar.png" alt="Hoteles Estelar">
-        </div>
-        <span class="login-live"><i></i> COLOMBIA / EN VIVO</span>
-      </div>
-      <div>
-        <p class="eyebrow">BACO OBRA / PORTAL ESTELAR</p>
-        <h1>Tus hoteles, <b>en contexto.</b></h1>
-        <p class="sub">Explora los hoteles geolocalizados de Colombia. En La Fontana podrás seguir planeación, modelo BIM, novedades y habitaciones.</p>
-      </div>
-      <div class="role-cards" role="radiogroup" aria-label="Perfil de acceso">
-        <button type="button" class="rcard ${loginChoice === 'estelar' ? 'on' : ''}" data-act="loginRol" data-v="estelar" aria-pressed="${loginChoice === 'estelar'}">
-          <span class="login-role-icon">${ic('crown', 2)}</span><b>Grupo Estelar</b><small>Vista general de los hoteles y la obra.</small>
-        </button>
-        <button type="button" class="rcard ${loginChoice === 'contratista' ? 'on' : ''}" data-act="loginRol" data-v="contratista" aria-pressed="${loginChoice === 'contratista'}">
-          <span class="login-role-icon">${ic('hard', 2)}</span><b>Equipo de obra</b><small>Mi especialidad, tareas y novedades.</small>
-        </button>
-      </div>
-      <div class="login-sub">
-        <span class="label" style="margin-bottom:8px">Especialidad con la que vas a trabajar</span>
-        <div class="chiprow">${ESPECIALIDADES.map((x) => `<button type="button" class="chip" data-act="loginEsp" data-v="${x.id}" aria-pressed="${loginEsp === x.id}"><span class="sw" style="background:${x.c}"></span>${x.corto}</button>`).join('')}</div>
-      </div>
-      <div class="login-fields">
-        <div><label class="label" for="lNombre">Tu nombre <small style="font-weight:500;opacity:.7">(opcional)</small></label><input class="field" id="lNombre" value="${esc(loginNombre)}" placeholder="Nombre o responsable"></div>
-      </div>
-      <div class="login-foot">
-        <button class="btn pri block cta" type="submit">Explorar mapa de hoteles <span class="go">${ic('arrowR', 2.6)}</span></button>
-        <small class="login-demo-note">Vista de demostración · el acceso con cuenta personal y check-in por QR se conectará a un registro compartido.</small>
-      </div>
-    </form>
-    <div class="login-map-caption"><span>01 / 05</span><b>Empieza en Colombia.</b><small>Selecciona La Fontana para recorrer el prototipo.</small></div>
-  </div>`;
+  mostrarAcceso($('layer'), () => { void trasLogin(); });
+}
+async function trasLogin(): Promise<void> {
+  cerrarAcceso();
+  sincronizarPerfil();
+  if (perfil) { conectarPresencia(perfil); toast(`Sesión iniciada · ${perfil.nombre}`); }
+  $('layer').innerHTML = '';
+  let pend = ''; try { pend = sessionStorage.getItem('baco-qr-pendiente') || ''; sessionStorage.removeItem('baco-qr-pendiente'); } catch { /* */ }
+  const actual = location.hash.slice(1);
+  const destino = pend ? 'qr-aprobar/' + pend : actual && !actual.startsWith('qr-') && actual !== 'nueva-clave' ? actual : 'mapa';
+  if (location.hash === '#' + destino) void go(); else location.hash = destino;
+}
+function sincronizarPerfil(): void {
+  if (!perfil) { S.rol = null; return; }
+  S.rol = perfil.rol === 'contratista' ? 'contratista' : 'estelar';
+  S.nombreUser = perfil.nombre;
+  save();
 }
 
 /* ---------------- rail + topbar ---------------- */
-function navActual(): [string, string, string][] {
-  return NAV;
-}
 
+function seccionDe(r: string): string {
+  if (r.startsWith('fontana') || r.startsWith('hoteles/la-fontana')) return 'fontana';
+  if (r.startsWith('hoteles') || r === '') return 'mapa';
+  if (r === 'habitacion-216') return 'habitacion-216';
+  const base = r.split('-')[0];
+  if (base === 'qr') return 'novedades';
+  return base;
+}
+function migasActuales(): [string, string][] {
+  if (route.startsWith('fontana')) return migas();
+  if (route === 'hoteles/bogota') return [['Hoteles', '#mapa'], ['Bogotá', '#hoteles/bogota']];
+  if (route === 'hoteles/la-fontana') return [['Hoteles', '#mapa'], ['Bogotá', '#hoteles/bogota'], ['La Fontana', '#hoteles/la-fontana']];
+  const n = NAV.find(([k]) => k === seccionDe(route));
+  if (!n || n[0] === 'mapa') return [['Hoteles', '#mapa']];
+  return [['La Fontana', '#hoteles/la-fontana'], [n[1], '#' + route]];
+}
+function iniciales(n: string): string { return n.split(/\s+/).filter(Boolean).slice(0, 2).map((x) => x[0]).join('').toUpperCase() || '·'; }
+const COL_AV = ['#0E3064', '#8C6F3A', '#2A9D8F', '#9A6BDB', '#C3532D', '#4F6EF0'];
+function pintarWho(): void {
+  const w = document.getElementById('who'); if (!w) return;
+  if (!presentes.length) { w.innerHTML = '<small>Conectando presencia…</small>'; return; }
+  const otros = presentes.filter((p) => p.uid !== perfil?.id);
+  const lista = [...presentes].sort((a, b) => Number(b.activo) - Number(a.activo));
+  w.innerHTML = lista.slice(0, 5).map((p, i) => `<span class="av ${p.activo ? '' : 'inact'}" style="background:${COL_AV[i % COL_AV.length]}" title="${esc(p.nombre)}">${esc(iniciales(p.nombre))}<i></i></span>`).join('')
+    + `<small>${otros.length ? otros.length + (otros.length === 1 ? ' persona más' : ' personas más') : 'Solo tú en línea'}</small>
+    <div class="pop" role="dialog" aria-label="Personas conectadas"><ul>${lista.map((p) => `<li><b>${esc(p.nombre)}${p.uid === perfil?.id ? ' (tú)' : ''}</b><span>${p.activo ? 'Activo' : 'Inactivo'}</span><small>${esc(ROL_TXT[p.rol as keyof typeof ROL_TXT] ?? p.rol)} · ${p.metodo === 'qr' ? 'QR' : 'cuenta'} · ${esc(p.proyecto)} · ${esc(p.vista || '—')}${p.lugar ? ' · ' + esc(p.lugar) : ''}${p.elemento ? ' · ' + esc(p.elemento) : ''} · última actividad ${new Date(p.ultima).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}</small></li>`).join('')}</ul>
+    <p class="note">Presencia en tiempo real: solo quien tiene la plataforma abierta ahora. El historial de ingresos es aparte.</p></div>`;
+  w.tabIndex = 0;
+}
 function renderChrome(): void {
-  const base = route.split('-')[0];
+  const sec = seccionDe(route);
   const ab = listaNovedades().filter((n) => n.estado !== 'Cerrada').length;
-  const nav = navActual();
-  const isCon = S.rol === 'contratista';
-  const eUser = espDe(S.espUser || 'arq');
-  const uName = S.nombreUser || (isCon ? `Contratista · ${eUser.corto}` : 'Gerencia Estelar');
-  const uSub = isCon ? `Frente ${eUser.corto} · Piso 2` : 'Hoteles Estelar · Propietario';
-  const uInic = isCon ? eUser.corto.slice(0, 2).toUpperCase() : 'HE';
-  const uBg = isCon ? `linear-gradient(135deg,${eUser.c},#141A21)` : 'linear-gradient(135deg,#C59B27,#16202B)';
-  $('rail').innerHTML = `<button class="logo" data-act="cambiarRol" title="BACO Studio · Cambiar perfil de acceso"><img src="logos/baco.png" alt="BACO"></button>` + nav.map(([k, l, i]) => `<a href="#${k === 'bim' ? 'bim-' + (S.espUser || 'arq') : k}" ${base === k || (k === 'mapa' && base === '') || (k === 'novedades' && base === 'qr') ? 'aria-current="page"' : ''} aria-label="${l}">${ic(i)}<span class="lbl">${l}</span><span class="rtx">${l.split(' ')[0]}</span>${k === 'novedades' && ab ? `<span class="dot">${ab}</span>` : ''}</a>`).join('');
+  const href = (k: string) => k === 'bim' ? 'bim-' + (S.espUser || 'arq') : k;
+  const item = (k: string) => { const n = NAV.find((x) => x[0] === k); if (!n) return ''; return `<a href="#${href(k)}" ${sec === k ? 'aria-current="page"' : ''} title="${n[1]}">${ic(n[2])}<span class="lbl">${n[1]}</span>${k === 'novedades' && ab ? `<span class="dot">${ab}</span>` : ''}</a>`; };
+  $('rail').innerHTML = `<div class="sb-brand"><img src="logos/estelar.png" alt="Hoteles Estelar"><span>Gemelo<br>digital</span></div>`
+    + NAV_SEC.map(([t, ks]) => `<div class="sb-sec">${t}</div>` + ks.map(item).join('')).join('')
+    + `<div class="sb-foot">
+        <div class="sb-user"><span class="av">${esc(iniciales(perfil?.nombre ?? ''))}</span><span class="t"><b>${esc(perfil?.nombre ?? 'Sin sesión')}</b><small>${perfil ? esc(ROL_TXT[perfil.rol]) + ' · ' + (perfil.metodo === 'qr' ? 'QR' : 'cuenta') : ''}</small></span></div>
+        <button class="sb-btn" data-act="tema" title="Cambiar tema">${ic(oscuro() ? 'sun' : 'moon')}<span>${oscuro() ? 'Modo claro' : 'Modo oscuro'}</span></button>
+        <button class="sb-btn" data-act="compacta" title="${compacta ? 'Expandir' : 'Compactar'} barra">${ic('side')}<span>${compacta ? 'Expandir' : 'Compactar'}</span></button>
+        <button class="sb-btn" data-act="salir" title="Cerrar sesión">${ic('logout')}<span>Cerrar sesión</span></button>
+      </div>`;
+  const m = migasActuales();
+  const atras = m.length > 1 ? m[m.length - 2][1] : '';
   $('topbar').innerHTML = `
-    ${base !== 'mapa' && base !== '' ? `<a class="scene-back" href="${base === 'plan' || base === 'obra' ? '#mapa' : base === 'bim' ? '#plan' : base === 'novedades' ? '#bim-' + (S.espUser || 'arq') : '#novedades'}" aria-label="Volver al paso anterior">${ic('back')}<span>Volver</span></a>` : ''}
-    <form class="search" id="fBuscar" role="search">${ic('search')}<input id="q" list="sugerencias" placeholder="Buscar hotel, habitación (214–225) o novedad…" aria-label="Buscar hotel o habitación"><datalist id="sugerencias">${HOTELES.map((h) => `<option value="${esc(h.nombre)}">`).join('')}${UBICACIONES.map(([, t]) => `<option value="${esc(t)}">`).join('')}</datalist><button class="circle" type="submit" aria-label="Buscar">${ic('filter')}</button></form>
-    ${pasos(base === 'mapa' || base === '' ? 0 : base === 'plan' || base === 'obra' ? 1 : base === 'bim' ? 2 : base === 'novedades' || base === 'qr' ? 3 : 4)}
-    <button class="circle light" data-act="tema" aria-label="Cambiar tema" title="Cambiar modo claro / oscuro">${ic(oscuro() ? 'sun' : 'moon')}</button>
+    <nav class="crumbs" aria-label="Ruta">${atras ? `<a class="bk" href="${atras}" aria-label="Regresar">${ic('back')}</a>` : ''}${m.map(([t, h], i) => (i ? '<span class="sep">/</span>' : '') + `<a href="${h}">${esc(t)}</a>`).join('')}</nav>
+    <form class="search" id="fBuscar" role="search">${ic('search')}<input id="q" list="sugerencias" placeholder="Buscar hotel, habitación o novedad…" aria-label="Buscar hotel o habitación"><datalist id="sugerencias">${HOTELES.map((h) => `<option value="${esc(h.nombre)}">`).join('')}${UBICACIONES.map(([, t]) => `<option value="${esc(t)}">`).join('')}</datalist></form>
     <a class="circle light" href="#novedades" aria-label="${ab} novedades abiertas" style="position:relative">${ic('bell')}${ab ? '<i style="position:absolute;top:9px;right:10px;width:8px;height:8px;border-radius:50%;background:var(--coral);border:2px solid var(--card)"></i>' : ''}</a>
-    <button class="user user-btn" data-act="cambiarRol" title="Cambiar perfil (Estelar / Contratista)">
-      <span class="avatar" style="background:${uBg}">${uInic}</span>
-      <span class="t"><b>${esc(uName)}</b><small>${esc(uSub)}</small></span>
-      <span class="role-switch">${ic('logout', 1.8)}</span>
-    </button>`;
+    <div class="who" id="who" aria-label="Personas conectadas"></div>`;
+  pintarWho();
+  if (!route.startsWith('fontana')) informarUbicacion({ vista: NAV.find((x) => x[0] === sec)?.[1] ?? 'Hoteles', lugar: '', elemento: '' });
 }
 
 /* ---------------- capa sobre el mapa ---------------- */
@@ -372,9 +380,7 @@ function renderOv(): void {
           <button type="button" class="chip" style="background:rgba(255,255,255,.14);color:#fff;padding:4px 10px;font-size:12px" data-act="elegirEsp">Inspeccionar MEP 3D →</button>
         </div>
         <div class="fm-db-bars">
-          <span style="flex:1.2;background:#E8604F">Arquitectura 34%</span>
-          <span style="flex:1;background:#1FA58C">Hidro 22%</span>
-          <span style="flex:0.9;background:#F2C94C;color:#141A21">Eléctrica 18%</span>
+          ${OBRA ? [['arq', 'Arquitectura', '#E8604F'], ['hid', 'Hidro', '#1FA58C'], ['ele', 'Eléctrica', '#F2C94C']].map(([k, n, c]) => `<span style="flex:1;background:${c}">${n} ${Math.round(porEsp(k).real * 100)}%</span>`).join('') : '<span style="flex:1;background:#6F7C8A">Sin datos de avance</span>'}
         </div>
       </div>
     </div>`;
@@ -542,6 +548,49 @@ async function go(): Promise<void> {
   route = h; anim = true;
   const base = h.split('-')[0];
   app.dataset.view = base || 'mapa';
+  document.body.classList.toggle('con-sesion', !!perfil);
+  if (h === 'nueva-clave') { $('rail').hidden = true; $('topbar').hidden = true; mostrarNuevaClave($('layer'), () => { $('layer').innerHTML = ''; location.hash = 'mapa'; }); return; }
+  if (h.startsWith('qr-aprobar/')) {
+    const [, id, nonce] = h.split('/');
+    $('rail').hidden = true; $('topbar').hidden = true; ocultarWorkspace();
+    await mostrarAprobacion($('layer'), id, nonce, () => renderLogin());
+    return;
+  }
+  if (!perfil && base !== 'reportar') {
+    $('rail').hidden = true; $('topbar').hidden = true; $('page').innerHTML = ''; $('page').className = ''; $('ov').innerHTML = '';
+    bim?.cerrar(); $('bim').hidden = true; ocultarWorkspace();
+    renderLogin();
+    return;
+  }
+  // área espacial del gemelo (#fontana…): la sidebar sigue visible
+  const rt = parseRuta(h);
+  if (rt) {
+    $('rail').hidden = false; $('topbar').hidden = false;
+    $('page').innerHTML = ''; $('page').className = ''; $('ov').innerHTML = '';
+    bim?.cerrar(); $('bim').hidden = true; pausarMapa(true); cerrarHoja();
+    const tw = $('twin'); const desdeMapa = tw.hidden; tw.hidden = false;
+    if (desdeMapa) { tw.style.transition = 'none'; tw.style.opacity = '0'; requestAnimationFrame(() => requestAnimationFrame(() => { tw.style.transition = 'opacity .9s ease'; tw.style.opacity = '1'; })); }
+    renderChrome();
+    await abrirWorkspace(rt);
+    renderChrome();
+    return;
+  }
+  ocultarWorkspace();
+  if (h === 'hoteles/bogota' || h === 'hoteles/la-fontana') {
+    $('rail').hidden = false; $('topbar').hidden = false; $('page').innerHTML = ''; $('page').className = ''; bim?.cerrar(); $('bim').hidden = true;
+    renderChrome();
+    const bog = HOTELES.filter((x) => x.ciudad === 'Bogotá');
+    const fon = HOTELES.find((x) => x.id === 'fontana')!;
+    $('ov').innerHTML = h === 'hoteles/bogota'
+      ? `<aside class="mapcard"><div class="glass hlist" style="max-height:none"><p class="map-eyebrow">BOGOTÁ · ${bog.length} HOTELES</p>${bog.map((x) => `<button class="hrow ${x.obra ? 'obra' : ''}" data-act="hotel" data-v="${x.id}"><span class="pin">${ic(x.obra ? 'build' : 'pin', 2)}</span><span><b>${esc(x.nombre)}</b><small>${esc(x.dir)}${x.obra ? '' : ' · ubicación aproximada'}</small></span></button>`).join('')}</div></aside>`
+      : `<aside class="hcard glass fontana-card"><p class="map-eyebrow">BOGOTÁ · USAQUÉN</p><h2 style="font-size:24px;font-weight:800;margin:2px 0">Hotel Estelar La Fontana</h2><p class="muted" style="font-size:13.5px">${esc(fon.dir)}</p><p class="muted" style="font-size:12.5px">Modelo Revit de la Torre Suites georreferenciado sobre el sitio.</p><a class="btn coral block cta" href="#fontana">${ic('cube', 2)} Explorar gemelo digital <span class="go">${ic('arrowR', 2.2)}</span></a></aside>`;
+    const hlf = await cargarMapa(); pausarMapa(false);
+    if (route !== h) return;
+    if (h === 'hoteles/bogota') { pines?.show(true); hlf.volarA(-74.06, 4.66, 42000, 2.8); }
+    else { pines?.show(false); await hlf.entrar(); }
+    return;
+  }
+
   // formulario abierto desde un QR: solo el formulario, sin cargar el mapa
   if (base === 'reportar') {
     const loc = h.slice(9);
@@ -549,29 +598,18 @@ async function go(): Promise<void> {
     abrirForm({ loc: UBICACIONES.some((u) => u[0] === loc) ? loc : 'COR' }, true);
     return;
   }
-  if (!S.rol) {
-    $('rail').hidden = true; $('topbar').hidden = true; $('page').innerHTML = ''; $('page').className = ''; $('ov').innerHTML = '';
-    bim?.cerrar(); $('bim').hidden = true;
-    renderLogin();
-    void cargarMapa().then((hlf) => {
-      pausarMapa(false);
-      pines?.show(true);
-      hlf.vistaColombia();
-    });
-    return;
-  }
   $('rail').hidden = false; $('topbar').hidden = false;
   if (formSolo) { formSolo = false; form = null; cerrarHoja(); }
   renderChrome();
   if (h === 'habitacion-216') {
-    $('page').innerHTML = ''; $('page').className = ''; $('ov').innerHTML = ''; $('topbar').hidden = true; $('rail').hidden = true;
+    $('page').innerHTML = ''; $('page').className = ''; $('ov').innerHTML = ''; $('topbar').hidden = true; $('rail').hidden = false;
     bim?.cerrar(); $('bim').hidden = true; pausarMapa(true); cerrarHoja();
     const { mountPrototype } = await import('./prototype');
     if (location.hash === '#habitacion-216') disposePrototype = mountPrototype($('prototype'));
     return;
   }
   if (base === 'bim') {
-    $('page').innerHTML = ''; $('page').className = ''; $('ov').innerHTML = ''; $('topbar').hidden = true; $('rail').hidden = true;
+    $('page').innerHTML = ''; $('page').className = ''; $('ov').innerHTML = ''; $('topbar').hidden = true; $('rail').hidden = false;
     pausarMapa(true);
     await abrirBim(h.slice(4) || 'coo');
     return;
@@ -681,25 +719,24 @@ app.addEventListener('click', async (ev) => {
     case 'lightbox': $('layer').innerHTML = `<div class="lightbox" data-act="cerrarHoja"><img src="${['img/suite.webp', 'img/bano.webp', 'img/axo.webp'][S.img]}" alt="Render"><button class="circle light" aria-label="Cerrar">${ic('x')}</button></div>`; return;
     case 'loginRol': {
       const inp = document.getElementById('lNombre') as HTMLInputElement | null;
-      if (inp) loginNombre = inp.value;
+      void inp;
       loginChoice = v as 'estelar' | 'contratista';
       renderLogin();
       return;
     }
     case 'loginEsp': {
       const inp = document.getElementById('lNombre') as HTMLInputElement | null;
-      if (inp) loginNombre = inp.value;
+      void inp;
       loginEsp = v;
       renderLogin();
       return;
     }
-    case 'cambiarRol': {
-      loginChoice = S.rol ?? 'estelar';
-      loginEsp = S.espUser || 'arq';
-      loginNombre = S.nombreUser || '';
-      renderLogin();
+    case 'cambiarRol': case 'salir': {
+      await desconectarPresencia(); await salir(); S.rol = null; save();
+      document.body.classList.remove('con-sesion'); location.hash = 'mapa'; void go();
       return;
     }
+    case 'compacta': compacta = !compacta; document.body.classList.toggle('side-compact', compacta); try { localStorage.setItem('baco-side', compacta ? 'compacta' : 'expandida'); } catch { /* */ } renderChrome(); return;
     case 'setEspUser': {
       S.espUser = v;
       filtroNov.esp = v === 'coo' ? 'todas' : v;
@@ -889,4 +926,9 @@ addEventListener('keydown', (e) => {
 
 void cargarObra().then(() => { if (PAGES.includes(route.split('-')[0])) { anim = true; renderPage(); } });
 void cargarNovedades().then(() => { renderChrome(); if (PAGES.includes(route.split('-')[0])) renderPage(); });
-void go();
+montarWorkspace($('twin'));
+addEventListener('twin:ruta', () => { route = decodeURIComponent(location.hash.slice(1)); renderChrome(); });
+alCambiarPresencia((l) => { presentes = l; pintarWho(); });
+alCambiarSesion((ev) => { if (ev === 'PASSWORD_RECOVERY') location.hash = 'nueva-clave'; });
+void iniciarAuth().then((p) => { if (p) { sincronizarPerfil(); conectarPresencia(p); } void go(); });
+
