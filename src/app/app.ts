@@ -12,6 +12,7 @@ import './shell.css';
 import { iniciarAuth, perfil, salir, alCambiarSesion, ROL_TXT } from './auth';
 import { mostrarAcceso, cerrarAcceso, mostrarAprobacion, mostrarNuevaClave } from './login';
 import { conectarPresencia, desconectarPresencia, alCambiarPresencia, informarUbicacion, type Presente } from './presence';
+import { vChat, preguntar, alCambiarChat } from './asistente';
 import { vResumen, montarResumen, detalleKpi, enviarAvance, validar, F as FR } from './resumen';
 import { iniciarAvance, alCambiarAvance } from './avance';
 import { filtro as filtroNovUI } from '../twin/nov-ui';
@@ -30,19 +31,20 @@ app.innerHTML = `
   <div id="bim" hidden></div>
   <div id="prototype"></div>
   <div id="twin" hidden></div>
+  <div id="asisPanel" hidden></div>
   <div id="layer"></div>`;
 const $ = (id: string) => document.getElementById(id)!;
 
 const NAV: [string, string, string][] = [
   ['mapa', 'Hoteles Colombia', 'globe'], ['fontana', 'Gemelo La Fontana', 'cube'], ['plan', 'Planeación', 'plan'], ['bim', 'Modelo BIM', 'obra'],
   ['novedades', 'Novedades', 'pin'], ['qr', 'Códigos QR', 'qr'], ['habitacion-216', 'Habitación 216', 'eye'],
-  ['resumen', 'Resumen', 'panel'], ['ia', 'Asistente', 'spark'],
+  ['resumen', 'Resumen', 'panel'], ['asistente', 'Asistente', 'spark'],
 ];
-const NAV_SEC: [string, string[]][] = [['Exploración espacial', ['mapa', 'fontana', 'bim', 'habitacion-216']], ['Gestión de obra', ['novedades', 'resumen', 'plan', 'ia', 'qr']]];
+const NAV_SEC: [string, string[]][] = [['Exploración espacial', ['mapa', 'fontana', 'bim', 'habitacion-216']], ['Gestión de obra', ['novedades', 'resumen', 'asistente', 'plan', 'qr']]];
 let compacta = false; try { compacta = localStorage.getItem('baco-side') === 'compacta'; } catch { /* */ }
 document.body.classList.toggle('side-compact', compacta);
 let presentes: Presente[] = [];
-const PAGES = ['resumen', 'panel', 'ia', 'plan', 'avance', 'proveedores', 'novedades', 'qr', 'entregables', 'honorarios'];
+const PAGES = ['asistente', 'resumen', 'panel', 'ia', 'plan', 'avance', 'proveedores', 'novedades', 'qr', 'entregables', 'honorarios'];
 let route = ''; let anim = true;
 let disposePrototype: (() => void) | null = null;
 const filtroNov = { esp: 'todas', est: 'abiertas', q: '' };
@@ -267,6 +269,7 @@ function renderChrome(): void {
     <nav class="crumbs" aria-label="Ruta">${atras ? `<a class="bk" href="${atras}" aria-label="Regresar">${ic('back')}</a>` : ''}${m.map(([t, h], i) => (i ? '<span class="sep">/</span>' : '') + `<a href="${h}">${esc(t)}</a>`).join('')}</nav>
     <form class="search" id="fBuscar" role="search">${ic('search')}<input id="q" list="sugerencias" placeholder="Buscar hotel, habitación o novedad…" aria-label="Buscar hotel o habitación"><datalist id="sugerencias">${HOTELES.map((h) => `<option value="${esc(h.nombre)}">`).join('')}${UBICACIONES.map(([, t]) => `<option value="${esc(t)}">`).join('')}</datalist></form>
     <a class="circle light" href="#novedades" aria-label="${ab} novedades abiertas" style="position:relative">${ic('bell')}${ab ? '<i style="position:absolute;top:9px;right:10px;width:8px;height:8px;border-radius:50%;background:var(--coral);border:2px solid var(--card)"></i>' : ''}</a>
+    <button class="circle light as-btn" data-act="asAbrir" title="Asistente BIM" aria-label="Abrir asistente">${ic('spark')}</button>
     <div class="who" id="who" aria-label="Personas conectadas"></div>`;
   pintarWho();
   if (!parseRuta(route)) informarUbicacion({ vista: NAV.find((x) => x[0] === sec)?.[1] ?? 'Hoteles', lugar: '', elemento: '' });
@@ -524,7 +527,7 @@ function renderPage(): void {
   const page = $('page');
   const base = route.split('-')[0];
   if (!PAGES.includes(base)) { page.innerHTML = ''; page.className = ''; return; }
-  const html = base === 'resumen' ? vResumen() : base === 'panel' ? vPanel() : base === 'ia' ? vAsistente(aiChat, waLog, modo360) : base === 'plan' ? vPlanPiso2() : base === 'avance' ? vAvance(habFiltro) : base === 'proveedores' ? vProveedores()
+  const html = base === 'asistente' ? `<header class="rs-head"><div><p class="eyebrow">ASISTENTE BIM · SOLO CONSULTA</p><h1>Pregúntale <b>a la obra.</b></h1><p class="sub">Responde con novedades, cronograma, avances validados y responsables registrados, y cita cada registro. No modifica datos.</p></div><a class="btn" href="#ia">${ic('wa')} Bitácora WhatsApp y 360° (demo anterior)</a></header>${vChat(false)}` : base === 'resumen' ? vResumen() : base === 'panel' ? vPanel() : base === 'ia' ? vAsistente(aiChat, waLog, modo360) : base === 'plan' ? vPlanPiso2() : base === 'avance' ? vAvance(habFiltro) : base === 'proveedores' ? vProveedores()
     : base === 'novedades' ? vNovedadesPiso2() : base === 'qr' ? vQR() : base === 'entregables' ? vEntregables() : vHonorarios();
   const y = page.scrollTop;
   const focusId = document.activeElement?.id;
@@ -650,6 +653,9 @@ app.addEventListener('click', async (ev) => {
     case 'piso2': piso2Open = !piso2Open; W.HLF?.piso2(); renderOv(); return;
     case 'completo': piso2Open = false; W.HLF?.completo(); renderOv(); return;
     case 'irRuta': location.hash = v; return;
+    case 'asAbrir': { const pa = $('asisPanel'); pa.hidden = !pa.hidden; pintarPanelAs(); return; }
+    case 'asCerrar': $('asisPanel').hidden = true; return;
+    case 'asSug': void preguntar(v); return;
     case 'rsKpi': $('layer').innerHTML = detalleKpi(v); return;
     case 'rsZoom': FR.zoom = v as typeof FR.zoom; renderPage(); return;
     case 'rsEsp': try { sessionStorage.setItem('twin-aislar', v); } catch { /* */ } location.hash = 'fontana/piso-2'; return;
@@ -823,6 +829,7 @@ app.addEventListener('submit', async (ev) => {
     else location.hash = dest;
     return;
   }
+  if (f.id === 'fAs' || f.id === 'fAsP') { const q = String(new FormData(f).get('q') ?? '').trim(); if (q) { f.reset(); void preguntar(q); } return; }
   if (f.id === 'fRsAvance') { await enviarAvance(f); f.reset(); return; }
   if (f.id === 'fBuscar') {
     const q = (document.getElementById('q') as HTMLInputElement).value.trim().toLowerCase(); if (!q) return;
@@ -944,6 +951,8 @@ addEventListener('twin:ruta', () => { route = decodeURIComponent(location.hash.s
 alCambiarPresencia((l) => { presentes = l; pintarWho(); });
 alCambiarSesion((ev) => { if (ev === 'PASSWORD_RECOVERY') location.hash = 'nueva-clave'; });
 void iniciarAuth().then((p) => { if (p) { sincronizarPerfil(); conectarPresencia(p); void iniciarNovedades(); void iniciarAvance(); } void go(); });
+function pintarPanelAs(): void { const pa = $('asisPanel'); if (pa.hidden) return; pa.innerHTML = vChat(true); const l = document.getElementById('asLogP'); if (l) l.scrollTop = l.scrollHeight; }
+alCambiarChat(() => { pintarPanelAs(); if (route === 'asistente') { renderPage(); const l = document.getElementById('asLog'); if (l) l.scrollTop = l.scrollHeight; } });
 alCambiarAvance(() => { if (route === 'resumen') renderPage(); });
 addEventListener('rs:novedades', (e) => { const d = (e as CustomEvent).detail as { fecha: string; tipo: 'nueva' | 'retraso' | 'imprevisto' }; filtroNovUI.periodo = 'dia'; filtroNovUI.fecha = d.fecha; filtroNovUI.tipos = new Set([d.tipo]); location.hash = 'novedades'; });
 alCambiarNovedades(() => { if (!perfil) return; renderChrome(); bim?.setPins(listaNovedades()); if (PAGES.includes(route.split('-')[0]) && !parseRuta(route)) { renderPage(); } });
