@@ -19,16 +19,18 @@ app.innerHTML = `
   <div id="ov"></div>
   <div id="page"></div>
   <div id="bim" hidden></div>
+  <div id="prototype"></div>
   <div id="layer"></div>`;
 const $ = (id: string) => document.getElementById(id)!;
 
 const NAV: [string, string, string][] = [
-  ['obra', 'Building Plan 3D', 'obra'], ['mapa', 'Hoteles Colombia', 'globe'], ['panel', 'Dashboard', 'panel'], ['ia', 'IA & WhatsApp', 'spark'],
+  ['obra', 'Building Plan 3D', 'obra'], ['habitacion-216', 'Habitación 216', 'eye'], ['mapa', 'Hoteles Colombia', 'globe'], ['panel', 'Dashboard', 'panel'], ['ia', 'IA & WhatsApp', 'spark'],
   ['avance', 'Avance semanal', 'avance'], ['novedades', 'Novedades y QR', 'novedades'], ['plan', 'Planeación', 'plan'],
   ['proveedores', 'Proveedores', 'proveedores'], ['entregables', 'Entregables', 'entregables'], ['honorarios', 'Honorarios', 'honorarios'],
 ];
 const PAGES = ['panel', 'ia', 'plan', 'avance', 'proveedores', 'novedades', 'qr', 'entregables', 'honorarios'];
 let route = ''; let anim = true;
+let disposePrototype: (() => void) | null = null;
 const filtroNov = { esp: 'todas', est: 'abiertas', q: '' };
 let habFiltro = '';
 let hotelSel: string | null = null;
@@ -132,7 +134,7 @@ function renderBimUi(): void {
     const hayOcultos = (bim?.ocultos.size ?? 0) > 0;
     host.insertAdjacentHTML('beforeend', `
     <div class="bimui bimbar">
-      <div class="glass bimtitle" style="padding:10px 18px 10px 10px"><button class="circle" data-act="bimVolver" aria-label="Volver">${ic('back')}</button><div><h2>Piso 2 · ${e.corto}</h2><small>Torre Suites · ${e.desc}</small></div></div>
+      <div class="glass bimtitle" style="padding:10px 18px 10px 10px"><button class="bim-back" data-act="bimVolver" aria-label="Volver a la torre">${ic('back')}<span>Volver a la torre</span></button><div><h2>Piso 2 · ${e.corto}</h2><small>Torre Suites · ${e.desc}</small></div></div>
       ${pasos(bim?.reportando ? 3 : 2, 'bimpasos')}
       <div class="glass espbar">${ESPECIALIDADES.map((x) => `<button data-act="bimEsp" data-v="${x.id}" aria-pressed="${x.id === bimEsp}"><i style="background:${x.c}"></i>${x.corto}</button>`).join('')}</div>
     </div>
@@ -261,6 +263,7 @@ function renderChrome(): void {
   const uBg = isCon ? `linear-gradient(135deg,${eUser.c},#141A21)` : 'linear-gradient(135deg,#C59B27,#16202B)';
   $('rail').innerHTML = `<button class="logo" data-act="cambiarRol" title="BACO Studio · Cambiar perfil de acceso">BS</button>` + nav.map(([k, l, i]) => `<a href="#${k}" ${base === k || (k === 'mapa' && base === '') || (k === 'novedades' && base === 'qr') ? 'aria-current="page"' : ''} aria-label="${l}">${ic(i)}<span class="lbl">${l}</span><span class="rtx">${l.split(' ')[0]}</span>${k === 'novedades' && ab ? `<span class="dot">${ab}</span>` : ''}</a>`).join('');
   $('topbar').innerHTML = `
+    ${base !== 'mapa' && base !== '' ? `<a class="scene-back" href="${base === 'obra' ? '#mapa' : '#obra'}" aria-label="${base === 'obra' ? 'Volver al mapa' : 'Volver al modelo 3D'}">${ic('back')}<span>${base === 'obra' ? 'Mapa' : 'Modelo 3D'}</span></a>` : ''}
     <form class="search" id="fBuscar" role="search">${ic('search')}<input id="q" list="sugerencias" placeholder="Buscar hotel, habitación (214–225) o novedad…" aria-label="Buscar hotel o habitación"><datalist id="sugerencias">${HOTELES.map((h) => `<option value="${esc(h.nombre)}">`).join('')}${UBICACIONES.map(([, t]) => `<option value="${esc(t)}">`).join('')}</datalist><button class="circle" type="submit" aria-label="Buscar">${ic('filter')}</button></form>
     ${base === 'mapa' || base === '' ? pasos(0) : base === 'obra' ? pasos(1) : '<div class="sp"></div>'}
     <button class="circle light" data-act="tema" aria-label="Cambiar tema" title="Cambiar modo claro / oscuro">${ic(oscuro() ? 'sun' : 'moon')}</button>
@@ -306,6 +309,18 @@ function renderOv(): void {
       return `<i class="${act}" style="height:${h}%"></i>`;
     }).join('');
     ov.innerHTML = `
+    <div class="scene-heading">
+      <div><span class="scene-kicker">HOTEL LA FONTANA / TORRE SUITES</span><h1>Explora la obra</h1><p>Selecciona el piso o una especialidad para inspeccionar el modelo BIM.</p></div>
+    </div>
+    <aside class="scene-panel" aria-label="Estado del piso 2">
+      <div class="scene-panel-top"><span class="scene-kicker">PISO 02 · PROTOTIPO</span><span class="scene-live"><i></i> En obra</span></div>
+      <h2>Torre Suites</h2>
+      <p>12 habitaciones · 432 m²</p>
+      <div class="scene-progress"><span><strong>${(ob.real * 100).toFixed(1)}%</strong><small>avance real</small></span><span><strong>${Math.round(ob.prog * 100)}%</strong><small>programado</small></span></div>
+      <div class="scene-track"><i style="width:${Math.min(100, Math.max(0, ob.real * 100))}%"></i></div>
+      <div class="scene-alert"><a href="#novedades"><b>${ab.length}</b> novedades abiertas ${ic('arrowR')}</a><a href="#novedades"><b>${crit.length}</b> de alta prioridad ${ic('arrowR')}</a></div>
+      <div class="scene-actions"><a class="scene-primary" href="#habitacion-216">Explorar habitación 216 ${ic('arrowR')}</a><button type="button" class="scene-secondary" data-act="elegirEsp">Inspeccionar modelo BIM</button><button type="button" class="scene-secondary" data-act="${piso2Open ? 'completo' : 'piso2'}">${piso2Open ? 'Ver torre completa' : 'Separar piso 2'}</button></div>
+    </aside>
     <!-- Tarjeta izquierda estilo Formify (Construction SaaS Dashboard sobre el modelo 3D) -->
     <aside class="fm-left glass">
       <div class="fm-head">
@@ -458,6 +473,7 @@ function abrirHabDetalle(h: string): void {
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <button class="btn coral" data-act="qrProbar" data-v="HAB-${esc(h)}" style="flex:1">${ic('camera')} Reportar novedad en Hab. ${esc(h)}</button>
       <button class="btn" data-act="abrirBim" data-v="arq" style="flex:1">${ic('eye')} Ver piso 2 en 3D</button>
+      ${h === '216' ? '<a class="btn teal" href="#habitacion-216" style="flex:1">Explorar prototipo SketchUp + Smart Home →</a>' : ''}
     </div>
     <div><span class="label">Actividades de la habitación (${a.hechas} de ${acts.length} terminadas)</span>
       <div class="scrollbox" style="max-height:220px">${acts.map((ac) => { const d = espDe(ac.esp), done = realAct(ac) >= 1; return `<label class="check ${done ? 'done' : ''}"><input type="checkbox" data-act="hecho" data-v="${esc(ac.id)}" ${done ? 'checked' : ''}><span class="bx">${ic('check', 3)}</span><span class="tx" style="flex:1"><b>${esc(ac.fase.replace(/^\d+\.\s*/, ''))}</b><small><span style="color:${d.c};font-weight:900">●</span> ${esc(ac.quien)} · ${fd(ac.ini)}–${fd(ac.fin)}</small></span></label>`; }).join('')}</div>
@@ -496,9 +512,11 @@ async function pintarQR(): Promise<void> {
 }
 
 async function go(): Promise<void> {
+  if (disposePrototype) { disposePrototype(); disposePrototype = null; }
   const h = decodeURIComponent(location.hash.slice(1));
   route = h; anim = true;
   const base = h.split('-')[0];
+  app.dataset.view = base || 'mapa';
   // formulario abierto desde un QR: solo el formulario, sin cargar el mapa
   if (base === 'reportar') {
     const loc = h.slice(9);
@@ -521,6 +539,13 @@ async function go(): Promise<void> {
   $('rail').hidden = false; $('topbar').hidden = false;
   if (formSolo) { formSolo = false; form = null; cerrarHoja(); }
   renderChrome();
+  if (h === 'habitacion-216') {
+    $('page').innerHTML = ''; $('page').className = ''; $('ov').innerHTML = ''; $('topbar').hidden = true; $('rail').hidden = true;
+    bim?.cerrar(); $('bim').hidden = true; pausarMapa(true); cerrarHoja();
+    const { mountPrototype } = await import('./prototype');
+    if (location.hash === '#habitacion-216') disposePrototype = mountPrototype($('prototype'));
+    return;
+  }
   if (base === 'bim') {
     $('page').innerHTML = ''; $('page').className = ''; $('ov').innerHTML = ''; $('topbar').hidden = true; $('rail').hidden = true;
     pausarMapa(true);
