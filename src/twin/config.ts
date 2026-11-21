@@ -31,10 +31,10 @@ export const TWIN = {
   } as Record<string, { habitaciones: string; mep: string }>,
   habitaciones: {
     '216': {
-      gemelo: 'prototype/habitacion-216-twin.glb',
-      fuenteGemelo: 'Maqueta SketchUp 210-HLF-MOCKUP (tipo Twin) · baño detallado de la maqueta, reflejado a su posición en la Twin',
+      gemelo: 'prototype/habitacion-216-max.glb', configurador: true,
+      fuenteGemelo: 'Escena renderizada de 3ds Max (HLF_PISO2_Arnold_TESIS_PBR_UV.max), exportada pieza por pieza',
     },
-  } as Record<string, { gemelo: string; fuenteGemelo: string }>,
+  } as Record<string, { gemelo: string; fuenteGemelo: string; configurador?: boolean }>,
 } as const;
 
 const RED = '1001_Hotel_la_fotona_redes.rvt · Piso 2';

@@ -3,6 +3,7 @@
    El estado (cámara, capas, selección) vive mientras la sesión esté abierta: volver atrás no recarga nada. */
 import './twin.css';
 import { crearStage, type Stage, type Modo } from './stage';
+import { abrirConfigurador, cerrarConfigurador, configuradorActivo, renderConfig, onConfig } from './config-ui';
 import { crearRoom, type Room, type ElementoTwin } from './room';
 import { ESPECIALIDADES, TWIN, CAT_TXT } from './config';
 import { leerElemento, guardarElemento, comentar, abrirIncidencia, cerrarIncidencia, responsablesDe, incidenciasAbiertas, ESTADOS, type FilaElemento, type Evento } from './datos';
@@ -108,13 +109,19 @@ async function abrirGemelo(hab: string, elId?: string): Promise<void> {
   if (!cfg) { toast(`El gemelo de la habitación ${hab} está pendiente de vinculación`); location.hash = '#fontana/piso-2/' + hab; return; }
   informarUbicacion({ vista: 'Gemelo digital', lugar: 'HAB-' + hab, elemento: elId ?? '' });
   if (room && roomHab === hab) { if (elId !== undefined) room.seleccionarPorId(elId); return; }
+  if (configuradorActivo() && roomHab === hab) return;
   // transición: la planta se acerca a la habitación y un velo funde hacia el interior
   if (stage?.modo === 'planta') { stage.pausar(false); await stage.acercarHabitacion(hab); }
   veil.classList.add('on');
   await new Promise((r) => setTimeout(r, 450));
   stage?.pausar(true); stage?.liberarMemoria();
   const rh = $('#twRoom')!; rh.hidden = false; rh.innerHTML = '';
-  room?.dispose();
+  room?.dispose(); room = null; cerrarConfigurador();
+  if (cfg.configurador) {
+    roomHab = hab; render();
+    try { await abrirConfigurador(rh, $('#twUi')!, hab, cfg.gemelo); } catch (e) { console.error(e); toast('No se pudo cargar la habitación'); }
+    veil.classList.remove('on'); return;
+  }
   room = crearRoom(rh, cfg.gemelo); roomHab = hab;
   room.onSeleccion = (e) => {
     elSel = e;
@@ -132,8 +139,8 @@ async function abrirGemelo(hab: string, elId?: string): Promise<void> {
   if (elId) room.seleccionarPorId(elId);
 }
 function cerrarGemelo(): void {
-  if (!room) return;
-  room.dispose(); room = null; roomHab = ''; elSel = null;
+  if (!room && !configuradorActivo()) return;
+  room?.dispose(); room = null; cerrarConfigurador(); roomHab = ''; elSel = null;
   const rh = $('#twRoom'); if (rh) { rh.hidden = true; rh.innerHTML = ''; }
   stage?.pausar(false);
 }
@@ -142,6 +149,7 @@ function cerrarGemelo(): void {
 function render(): void {
   const ui = $('#twUi'); if (!ui) return;
   if (ruta.v === 'novedades') { renderNov(); return; }
+  if (ruta.v === 'gemelo' && configuradorActivo()) { renderConfig(); return; }
   let aislar = ''; try { aislar = sessionStorage.getItem('twin-aislar') || ''; } catch { /* */ }
   if (aislar && stage?.modo === 'planta') { try { sessionStorage.removeItem('twin-aislar'); } catch { /* */ } if (stage.aislada !== aislar && ESPECIALIDADES.some((e) => e.id === aislar && e.cats.length)) stage.aislarCapa(aislar); }
   const s = stage;
@@ -337,6 +345,7 @@ function pintarCoincidencias(): void {
 
 /* ---------------- eventos ---------------- */
 async function onClick(ev: Event): Promise<void> {
+  if (configuradorActivo() && await onConfig(ev)) return;
   if (await onClickNov(ev)) return;
   const b = (ev.target as HTMLElement).closest<HTMLElement>('[data-tw]'); if (!b) return;
   const a = b.dataset.tw!, v = b.dataset.v ?? '';
@@ -366,6 +375,7 @@ async function onClick(ev: Event): Promise<void> {
   }
 }
 function onInput(ev: Event): void {
+  if (configuradorActivo()) { void onConfig(ev); }
   const t = ev.target as HTMLInputElement;
   if (t.id === 'twScrub' && stage) { stage.tl.pause(); stage.tl.progress(+t.value / 1000); return; }
   if (t.dataset.capa && stage) { stage.setCapa(t.dataset.capa, { opacidad: +t.value / 100 }); return; }

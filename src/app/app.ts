@@ -221,6 +221,7 @@ function sincronizarPerfil(): void {
 /* ---------------- rail + topbar ---------------- */
 
 function seccionDe(r: string): string {
+  if (/^fontana\/\d{3}\/gemelo/.test(r)) return 'habitacion-216';
   if (r.startsWith('fontana') || r.startsWith('hoteles/la-fontana')) return 'fontana';
   if (r.startsWith('hoteles') || r === '') return 'mapa';
   if (r === 'habitacion-216') return 'habitacion-216';
@@ -253,7 +254,7 @@ function pintarWho(): void {
 function renderChrome(): void {
   const sec = seccionDe(route);
   const ab = listaNovedades().filter((n) => n.estado !== 'Cerrada').length;
-  const href = (k: string) => k === 'bim' ? 'bim-' + (S.espUser || 'arq') : k === 'fontana' ? 'hoteles/la-fontana' : k;
+  const href = (k: string) => k === 'bim' ? 'bim-' + (S.espUser || 'arq') : k === 'fontana' ? 'hoteles/la-fontana' : k === 'habitacion-216' ? 'fontana/216/gemelo' : k;
   $('rail').innerHTML = `<button class="logo" data-act="salir" title="${esc(perfil?.nombre ?? '')} · Cerrar sesión"><img src="logos/baco.png" alt="BACO"></button>`
     + NAV_SEC.flatMap(([, ks]) => ks).map((k) => { const n = NAV.find((x) => x[0] === k); if (!n) return ''; return `<a href="#${href(k)}" ${sec === k ? 'aria-current="page"' : ''} aria-label="${n[1]}">${ic(n[2])}<span class="lbl">${n[1]}</span><span class="rtx">${n[1].split(' ')[0]}</span>${k === 'novedades' && ab ? `<span class="dot">${ab}</span>` : ''}</a>`; }).join('');
   const m = migasActuales();
