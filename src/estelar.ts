@@ -28,8 +28,8 @@ export function crearPinesEstelar(viewer: Cesium.Viewer, onPick: (id: string) =>
     cl.label.show = true; const cuenta = (c: string) => hs.filter((h) => h.ciudad === c).length;
     const prin = obra ? 'Bogotá' : [...ciudades].sort((x, y) => cuenta(y) - cuenta(x))[0];
     cl.label.text = (ciudades.length === 1 ? `${prin} · ${hs.length} hoteles` : `${hs.length} hoteles · ${prin} y ${ciudades.length - 1 === 1 ? ciudades.find((c) => c !== prin) : (ciudades.length - 1) + ' ciudades más'}`) + (obra ? '  ·  La Fontana en obra' : '');
-    cl.label.font = '800 14px Urbanist, system-ui, sans-serif'; cl.label.fillColor = Cesium.Color.fromCssColorString('#16202B');
-    cl.label.showBackground = true; cl.label.backgroundColor = Cesium.Color.WHITE.withAlpha(0.94); cl.label.backgroundPadding = new Cesium.Cartesian2(10, 6);
+    cl.label.font = '800 28px Urbanist, system-ui, sans-serif'; cl.label.scale = 0.5; cl.label.fillColor = Cesium.Color.fromCssColorString('#16202B');
+    cl.label.showBackground = true; cl.label.backgroundColor = Cesium.Color.WHITE.withAlpha(0.94); cl.label.backgroundPadding = new Cesium.Cartesian2(20, 12);
     cl.label.verticalOrigin = Cesium.VerticalOrigin.BOTTOM; cl.label.pixelOffset = new Cesium.Cartesian2(0, obra ? -112 : -78); cl.label.disableDepthTestDistance = Number.POSITIVE_INFINITY;
   });
   viewer.dataSources.add(ds);
@@ -42,9 +42,9 @@ export function crearPinesEstelar(viewer: Cesium.Viewer, onPick: (id: string) =>
         disableDepthTestDistance: Number.POSITIVE_INFINITY, scaleByDistance: new Cesium.NearFarScalar(2e4, 1.1, 3e6, 0.7),
       },
       label: {
-        text: h.obra ? 'La Fontana · obra' : h.nombre.replace('Estelar ', ''), font: (h.obra ? '800 15px' : '700 13px') + ' Urbanist, system-ui, sans-serif',
+        text: h.obra ? 'La Fontana · obra' : h.nombre.replace('Estelar ', ''), font: (h.obra ? '800 30px' : '700 26px') + ' Urbanist, system-ui, sans-serif', scale: 0.5,
         fillColor: Cesium.Color.fromCssColorString('#16202B'), showBackground: true, backgroundColor: Cesium.Color.WHITE.withAlpha(0.92),
-        backgroundPadding: new Cesium.Cartesian2(9, 6), pixelOffset: new Cesium.Cartesian2(0, h.obra ? -112 : -78),
+        backgroundPadding: new Cesium.Cartesian2(18, 12), pixelOffset: new Cesium.Cartesian2(0, h.obra ? -112 : -78),
         verticalOrigin: Cesium.VerticalOrigin.BOTTOM, heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
         disableDepthTestDistance: Number.POSITIVE_INFINITY,
         
@@ -109,7 +109,8 @@ export function verTodos(viewer: Cesium.Viewer, desdeEspacio = false): void {
     complete: () => { if (yo === cancelado) orbitar(viewer); },
   });
   if (desdeEspacio) {
-    viewer.camera.setView({ destination: Cesium.Cartesian3.fromRadians(c.longitude + 0.35, c.latitude - 0.2, 1.6e7), orientation: { heading: 0, pitch: Cesium.Math.toRadians(-90), roll: 0 } });
+    // entra ya sobre Colombia (sin el cielo negro del espacio): baja suave desde más altura
+    viewer.camera.setView({ destination: Cesium.Cartesian3.fromRadians(c.longitude + 0.08, c.latitude - Cesium.Math.toRadians(9), 3.4e6), orientation: { heading: Cesium.Math.toRadians(-6), pitch: Cesium.Math.toRadians(-66), roll: 0 } });
   }
   ir();
 }

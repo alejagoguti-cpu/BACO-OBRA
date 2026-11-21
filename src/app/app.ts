@@ -80,13 +80,20 @@ let ciudadSel: string | null = null;
 let entradaHecha = false; let enRecorrido = false; let ciudadCine: string | null = null;
 function cargarMapa(): Promise<HLFApi> {
   mapa ??= (async () => {
-    $('ov').insertAdjacentHTML('beforeend', '<div class="map-cloud" id="mapLoading" role="status"><div class="cloud-points" aria-hidden="true"></div><span>Ubicando hoteles en Colombia…</span></div>');
+    $('ov').insertAdjacentHTML('beforeend', '<div class="map-cloud map-load" id="mapLoading" role="status"><div class="ml-box"><img src="logos/estelar.png" alt=""><b>Hoteles Estelar en Colombia</b><i class="ml-bar"><i></i></i><small>Cargando mapa satelital…</small></div></div>');
     await import('../main');
     est = await import('../estelar');
     const { crearPinesEstelar } = est;
     const hlf = W.HLF!;
     pines = crearPinesEstelar(hlf.viewer as never, (id) => seleccionarHotel(id));
-    document.getElementById('mapLoading')?.remove();
+    // la pantalla de carga se queda hasta que el globo tenga sus imágenes (sin parpadeo negro)
+    await new Promise<void>((res) => {
+      const g = (hlf.viewer as unknown as { scene: { globe: { tilesLoaded: boolean; tileLoadProgressEvent: { addEventListener(f: (n: number) => void): () => void } } } }).scene.globe;
+      let quitar: (() => void) | null = null; const fin = () => { quitar?.(); clearTimeout(t); res(); };
+      const t = setTimeout(fin, 9000);
+      quitar = g.tileLoadProgressEvent.addEventListener((n) => { if (n === 0 && g.tilesLoaded) setTimeout(fin, 600); });
+    });
+    const ld = document.getElementById('mapLoading'); if (ld) { ld.style.transition = 'opacity .7s ease'; ld.style.opacity = '0'; setTimeout(() => ld.remove(), 750); }
     setTimeout(() => hlf.precargar(), 5500);
     return hlf;
   })();
@@ -645,7 +652,7 @@ async function go(): Promise<void> {
     return;
   }
   if (base === 'bim') {
-    $('page').innerHTML = ''; $('page').className = ''; $('ov').innerHTML = ''; $('topbar').hidden = true; $('rail').hidden = false;
+    $('page').innerHTML = ''; $('page').className = ''; $('ov').innerHTML = ''; $('topbar').hidden = false; $('rail').hidden = false;
     pausarMapa(true);
     await abrirBim(h.slice(4) || 'coo');
     return;

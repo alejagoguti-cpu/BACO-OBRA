@@ -259,3 +259,17 @@ body.con-sesion #bim::before,body.con-sesion #prototype .proto::before{content:'
 :root[data-theme="dark"] body.con-sesion #bim::before,:root[data-theme="dark"] body.con-sesion #prototype .proto::before{background:#10161c}
 #app #bim .bimbar{align-items:stretch}
 #app #bim .bimtitle,#app #bim .bimpasos{min-height:58px;display:flex;align-items:center}
+body.con-sesion .look-toggle{display:none}
+/* misma barra superior en todos los módulos (también sobre el Modelo BIM) */
+body.con-sesion #app .topbar{z-index:70}
+#app #bim .bimbar{top:78px}
+#app #bim .bim-back{display:none}
+/* carga del mapa: sin silueta plana, solo marca y progreso */
+#app .map-load{background:radial-gradient(900px 600px at 55% 45%,#fbf9f5,#ece6dc)}
+.map-load .ml-box{display:flex;flex-direction:column;align-items:center;gap:10px;color:#0e3064}
+.map-load img{width:54px;height:54px;object-fit:contain;opacity:.9}
+.map-load b{font:600 15px var(--f,sans-serif);letter-spacing:.02em}
+.map-load small{font-size:11px;letter-spacing:.06em;color:#7a746b;font-weight:600}
+.map-load .ml-bar{width:180px;height:3px;border-radius:3px;background:#e0d8ca;overflow:hidden;display:block}
+.map-load .ml-bar i{display:block;width:40%;height:100%;background:#C9A96E;border-radius:3px;animation:mlbar 1.2s ease-in-out infinite}
+@keyframes mlbar{from{transform:translateX(-100%)}to{transform:translateX(260%)}}

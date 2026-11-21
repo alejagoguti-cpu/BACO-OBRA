@@ -228,15 +228,17 @@ export function render(): void {
       <select data-nvf="resp"><option value="">Responsable</option>${resps.map((r) => `<option ${filtro.resp === r ? 'selected' : ''}>${esc(r)}</option>`).join('')}</select>
     </div>
     ${uiEquipo()}
+  </aside>
+  <div class="nv-tools">
+    <button class="tw-ico" data-nv="encuadrar" title="Encuadrar">${ic('area')}</button>
+  </div>
+  ${!personaSel && !creando && !sel ? `<aside class="tw-card nv-listap"><div class="nv-lh"><span class="tw-over">Novedades${filtro.hab ? ' · habitación ' + esc(filtro.hab) : ' · piso 2'}</span><b>${lista.length}</b></div>
     <div class="nv-list">${!lista.length ? `<p class="tw-muted nv-empty">${todas.length ? 'Ninguna novedad cumple los filtros.' : 'Aún no hay novedades registradas en el piso 2. Usa “Nueva novedad” y toca el punto en el modelo.'}</p>` :
       lista.map((n) => `<button class="nv-row ${n.id === sel ? 'on' : ''}" data-nv="sel" data-v="${n.id}">
         <i style="background:${TIPO_COL[n.tipo]}"></i>
         <span><b>${esc(n.titulo)}</b><small>${esc(n.codigo)} · ${n.habitacion ? 'Hab. ' + esc(n.habitacion) : 'Piso 2'} · ${esc(espTxt(n.especialidad))} · ${fechaHoraBog(n.created_at)}</small></span>
         <em class="nv-st st-${n.estado}">${ESTADO_TXT[n.estado]}</em></button>`).join('')}</div>
-  </aside>
-  <div class="nv-tools">
-    <button class="tw-ico" data-nv="encuadrar" title="Encuadrar">${ic('area')}</button>
-  </div>
+  </aside>` : ''}
   ${personaSel ? uiPersona() : creando ? uiCrear() : `<aside class="tw-card tw-panel nv-det" id="nvDet" ${sel ? '' : 'hidden'}></aside>`}
   ${uiTimeline()}`;
   if (sel && !creando) { const n = novedades().find((x) => x.id === sel); if (n) void pintarDetalle(n); }
@@ -248,7 +250,7 @@ function ajustarMargen(): void {
   if (!stage || !ui || !activo) return;
   const host = ui.parentElement!.getBoundingClientRect(); if (!host.width) return;
   const r = (q: string) => { const e = ui!.querySelector<HTMLElement>(q); return e && !e.hidden && e.offsetParent ? e.getBoundingClientRect() : null; };
-  const side = r('.nv-side'), tl = r('.nv-tl'), det = r('.nv-det:not([hidden]),.nv-form-p,.nv-perfil-p');
+  const side = r('.nv-side'), tl = r('.nv-tl'), det = r('.nv-listap,.nv-det:not([hidden]),.nv-form-p,.nv-perfil-p');
   const m = { l: side ? side.right - host.left + 12 : 20, r: det ? host.right - det.left + 12 : 24, t: 90, b: tl ? host.bottom - tl.top + 12 : 20 };
   const k = JSON.stringify(m); if (k === margenFirma) return; const primera = !margenFirma; margenFirma = k; stage.setMargen(m);
   if (stage.modo === 'planta') { if (filtro.hab) void stage.acercarHabitacion(filtro.hab); else stage.ajustarPlanta(!primera); }
