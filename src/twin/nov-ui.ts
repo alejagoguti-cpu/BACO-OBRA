@@ -216,28 +216,41 @@ export function render(): void {
   const todas = novedades(); const lista = filtradas();
   const habs = [...new Set(stage?.habitaciones.map((h) => h.numero) ?? [])];
   const resps = [...new Set(todas.map((n) => n.responsable).filter(Boolean))] as string[];
+  const abiertas = todas.filter(abierta);
+  const kRet = abiertas.filter((n) => n.tipo === 'retraso').length, kImp = abiertas.filter((n) => n.tipo === 'imprevisto').length;
+  const kObra = listaPersonal().filter((p) => dentroAhora(p.id)).length;
+  const kpi = (k: string, n: number, t: string, c: string, on: boolean) => `<button class="nv-kpi ${on ? 'on' : ''}" data-nv="kpi" data-v="${k}" style="--c:${c}"><b>${n}</b><small>${t}</small></button>`;
+  const hayFiltro = filtro.tipos.size || filtro.estado !== 'todas' || filtro.esp || filtro.hab || filtro.resp || filtro.periodo !== 'todo';
+  // bitácora agrupada por día (Bogotá)
+  const porDia = new Map<string, Nov[]>(); lista.forEach((n) => { const d = diaBog(n.created_at); if (!porDia.has(d)) porDia.set(d, []); porDia.get(d)!.push(n); });
+  const ayer = diaBog(Date.now() - 864e5);
+  const tituloDia = (d: string) => d === hoyBog() ? 'Hoy' : d === ayer ? 'Ayer' : new Date(d + 'T12:00:00-05:00').toLocaleDateString('es-CO', { timeZone: TZ, weekday: 'long', day: 'numeric', month: 'long' });
+  const tarjeta = (n: Nov) => `<button class="nv-c ${n.id === sel ? 'on' : ''}" data-nv="sel" data-v="${n.id}" style="--c:${TIPO_COL[n.tipo]}">
+      <span class="nv-c-top"><em class="nv-c-tag">${esc(TIPO_TXT[n.tipo])}</em><span class="nv-c-cod">${esc(n.codigo)}</span><em class="nv-st st-${n.estado}">${ESTADO_TXT[n.estado]}</em></span>
+      <b>${esc(n.titulo)}</b>
+      <span class="nv-c-meta"><span>${ic('area', 1.6)}${n.habitacion ? 'Hab. ' + esc(n.habitacion) : 'Piso 2'}</span><span>${ic('layers', 1.6)}${esc(espTxt(n.especialidad))}</span><span>${horaBog(n.created_at)}</span>${n.adjuntos?.length ? `<span>${ic('camera', 1.6)}${n.adjuntos.length}</span>` : ''}</span>
+    </button>`;
   ui.innerHTML = `
   <aside class="tw-card nv-side">
-    <div class="nv-head"><div><span class="tw-over">Novedades · Piso 2</span><h2>${lista.length} <small>de ${todas.length}</small></h2></div>
-      <button class="tw-btn pri" data-nv="nueva" ${perfil ? '' : 'disabled'}>${ic('plus', 2)} Nueva novedad</button></div>
-    <div class="nv-chips">${(Object.keys(TIPO_TXT) as TipoNov[]).map((t) => `<button data-nv="tipo" data-v="${t}" aria-pressed="${filtro.tipos.has(t)}" style="--c:${TIPO_COL[t]}"><i></i>${TIPO_TXT[t]}</button>`).join('')}</div>
-    <div class="nv-filt">
+    <div class="nv-h"><span class="tw-over">Novedades · Piso 2 · Torre Suites</span><h2>Bitácora de obra</h2></div>
+    <div class="nv-kpis">${kpi('abiertas', abiertas.length, 'Abiertas', '#0E3064', filtro.estado === 'abiertas')}${kpi('retraso', kRet, 'Retrasos', TIPO_COL.retraso, filtro.tipos.has('retraso'))}${kpi('imprevisto', kImp, 'Imprevistos', TIPO_COL.imprevisto, filtro.tipos.has('imprevisto'))}${kpi('obra', kObra, 'En obra hoy', '#1E9A62', false)}</div>
+    <div class="nv-sec"><span class="tw-lbl">Tipo</span><div class="nv-chips">${(Object.keys(TIPO_TXT) as TipoNov[]).map((t) => `<button data-nv="tipo" data-v="${t}" aria-pressed="${filtro.tipos.has(t)}" style="--c:${TIPO_COL[t]}"><i></i>${TIPO_TXT[t]}</button>`).join('')}</div></div>
+    <div class="nv-sec"><span class="tw-lbl">Filtrar ${hayFiltro ? '<button class="nv-limpiar" data-nv="limpiar">Limpiar</button>' : ''}</span><div class="nv-filt">
       <select data-nvf="estado"><option value="todas">Todos los estados</option><option value="abiertas" ${filtro.estado === 'abiertas' ? 'selected' : ''}>Abiertas</option>${(Object.keys(ESTADO_TXT) as EstadoNov[]).map((e) => `<option value="${e}" ${filtro.estado === e ? 'selected' : ''}>${ESTADO_TXT[e]}</option>`).join('')}</select>
       <select data-nvf="esp"><option value="">Especialidad</option>${ESPS.map((e) => `<option value="${e.id}" ${filtro.esp === e.id ? 'selected' : ''}>${e.nombre}</option>`).join('')}</select>
       <select data-nvf="hab"><option value="">Habitación</option>${habs.map((h) => `<option value="${h}" ${filtro.hab === h ? 'selected' : ''}>${h}</option>`).join('')}</select>
       <select data-nvf="resp"><option value="">Responsable</option>${resps.map((r) => `<option ${filtro.resp === r ? 'selected' : ''}>${esc(r)}</option>`).join('')}</select>
-    </div>
+    </div></div>
     ${uiEquipo()}
   </aside>
   <div class="nv-tools">
-    <button class="tw-ico" data-nv="encuadrar" title="Encuadrar">${ic('area')}</button>
+    <button class="tw-ico" data-nv="encuadrar" title="Ver todo el piso">${ic('area')}</button>
   </div>
-  ${!personaSel && !creando && !sel ? `<aside class="tw-card nv-listap"><div class="nv-lh"><span class="tw-over">Novedades${filtro.hab ? ' · habitación ' + esc(filtro.hab) : ' · piso 2'}</span><b>${lista.length}</b></div>
-    <div class="nv-list">${!lista.length ? `<p class="tw-muted nv-empty">${todas.length ? 'Ninguna novedad cumple los filtros.' : 'Aún no hay novedades registradas en el piso 2. Usa “Nueva novedad” y toca el punto en el modelo.'}</p>` :
-      lista.map((n) => `<button class="nv-row ${n.id === sel ? 'on' : ''}" data-nv="sel" data-v="${n.id}">
-        <i style="background:${TIPO_COL[n.tipo]}"></i>
-        <span><b>${esc(n.titulo)}</b><small>${esc(n.codigo)} · ${n.habitacion ? 'Hab. ' + esc(n.habitacion) : 'Piso 2'} · ${esc(espTxt(n.especialidad))} · ${fechaHoraBog(n.created_at)}</small></span>
-        <em class="nv-st st-${n.estado}">${ESTADO_TXT[n.estado]}</em></button>`).join('')}</div>
+  ${!personaSel && !creando && !sel ? `<aside class="tw-card nv-listap">
+    <div class="nv-lh"><div><span class="tw-over">${filtro.hab ? 'Habitación ' + esc(filtro.hab) : 'Todo el piso'}</span><h3>${lista.length} ${lista.length === 1 ? 'novedad' : 'novedades'}${lista.length !== todas.length ? ` <small>de ${todas.length}</small>` : ''}</h3></div>
+      <button class="tw-btn pri" data-nv="nueva" ${perfil ? '' : 'disabled'}>${ic('plus', 2)} Nueva</button></div>
+    <div class="nv-list">${!lista.length ? `<div class="nv-vacio">${ic('pin', 1.6)}<b>${todas.length ? 'Nada con estos filtros' : 'Sin novedades todavía'}</b><small>${todas.length ? 'Cambia o limpia los filtros para ver más.' : 'Toca “Nueva”, marca el punto en la planta y describe lo que pasó.'}</small></div>` :
+      [...porDia].map(([d, ns]) => `<div class="nv-dia"><span>${tituloDia(d)}</span><i>${ns.length}</i></div>${ns.map(tarjeta).join('')}`).join('')}</div>
   </aside>` : ''}
   ${personaSel ? uiPersona() : creando ? uiCrear() : `<aside class="tw-card tw-panel nv-det" id="nvDet" ${sel ? '' : 'hidden'}></aside>`}
   ${uiTimeline()}`;
@@ -261,7 +274,7 @@ addEventListener('resize', () => { margenFirma = ''; requestAnimationFrame(ajust
 function uiTimeline(): string {
   // días visibles: según periodo/fecha; por defecto las últimas 2 semanas hasta hoy
   const base = new Date(filtro.fecha + 'T12:00:00-05:00').getTime();
-  const n = filtro.periodo === 'mes' ? 31 : filtro.periodo === 'semana' ? 7 : 14;
+  const n = filtro.periodo === 'mes' ? 31 : filtro.periodo === 'semana' ? 7 : 21;
   let ini = base - (n - 1) * 864e5;
   if (filtro.periodo === 'semana') { const dow = (new Date(base).getUTCDay() + 6) % 7; ini = base - dow * 864e5; }
   if (filtro.periodo === 'mes') { ini = new Date(filtro.fecha.slice(0, 7) + '-01T12:00:00-05:00').getTime(); }
@@ -270,13 +283,15 @@ function uiTimeline(): string {
   const lista = novedades().filter((x) => { const f = filtro; const keep = (!f.tipos.size || f.tipos.has(x.tipo)) && (f.estado === 'todas' || (f.estado === 'abiertas' ? abierta(x) : x.estado === f.estado)) && (!f.esp || x.especialidad === f.esp) && (!f.hab || x.habitacion === f.hab) && (!f.resp || (x.responsable ?? '') === f.resp); return keep; });
   void sinPeriodo;
   const por = new Map<string, Nov[]>(); lista.forEach((x) => { const d = diaBog(x.created_at); if (!por.has(d)) por.set(d, []); por.get(d)!.push(x); });
-  const fmt = (d: string) => new Date(d + 'T12:00:00-05:00').toLocaleDateString('es-CO', { timeZone: TZ, day: '2-digit', month: 'short' }).toUpperCase();
+  const hoy = hoyBog();
   return `<section class="tw-card nv-tl" aria-label="Línea de tiempo">
-    <div class="nv-tlhead"><span class="tw-over">Historial cronológico · America/Bogota</span>
+    <div class="nv-tlhead"><span class="tw-over">Línea de tiempo</span>
       <div class="tw-seg">${(['dia', 'semana', 'mes', 'todo'] as Periodo[]).map((p) => `<button data-nv="periodo" data-v="${p}" aria-pressed="${filtro.periodo === p}">${{ dia: 'Día', semana: 'Semana', mes: 'Mes', todo: 'Todo' }[p]}</button>`).join('')}</div>
-      <input type="date" data-nvf="fecha" value="${filtro.fecha}" max="${hoyBog()}"></div>
-    <div class="nv-days">${dias.slice().reverse().map((d) => { const xs = por.get(d) ?? []; return `<button class="nv-day ${filtro.periodo === 'dia' && filtro.fecha === d ? 'on' : ''} ${d === hoyBog() ? 'hoy' : ''}" data-nv="dia" data-v="${d}">
-      <b>${fmt(d)}</b>${xs.length ? xs.slice(0, 4).map((x) => `<span style="--c:${TIPO_COL[x.tipo]}" title="${esc(x.titulo)}">${horaBog(x.created_at)} · ${x.habitacion ? esc(x.habitacion) : 'P2'} · ${esc(TIPO_TXT[x.tipo])}</span>`).join('') + (xs.length > 4 ? `<em>+${xs.length - 4}</em>` : '') : '<small>—</small>'}</button>`; }).join('')}</div>
+      <input type="date" data-nvf="fecha" value="${filtro.fecha}" max="${hoy}"></div>
+    <div class="nv-days">${dias.slice().reverse().map((d) => { const xs = por.get(d) ?? []; const dt = new Date(d + 'T12:00:00-05:00');
+      return `<button class="nv-day ${filtro.periodo === 'dia' && filtro.fecha === d ? 'on' : ''} ${d === hoy ? 'hoy' : ''} ${xs.length ? 'con' : ''}" data-nv="dia" data-v="${d}" title="${xs.map((x) => esc(TIPO_TXT[x.tipo] + ' · ' + x.titulo)).join('\n')}">
+        <small>${dt.toLocaleDateString('es-CO', { timeZone: TZ, weekday: 'short' }).replace('.', '')}</small><b>${dt.toLocaleDateString('es-CO', { timeZone: TZ, day: 'numeric' })}</b>
+        <span class="nv-dots">${xs.slice(0, 5).map((x) => `<i style="background:${TIPO_COL[x.tipo]}"></i>`).join('')}${xs.length > 5 ? `<em>+${xs.length - 5}</em>` : ''}</span></button>`; }).join('')}</div>
   </section>`;
 }
 
@@ -365,7 +380,9 @@ export async function onClickNov(ev: Event): Promise<boolean> {
     case 'persona': personaSel = v; sel = null; render(); break;
     case 'cerrarPersona': personaSel = null; render(); break;
     case 'quitarAsig': { const [pid, hab] = v.split('|'); toast((await quitarAsignacion(pid, hab)) ?? 'Asignación retirada'); break; }
-    case 'encuadrar': stage?.encuadrar(); break;
+    case 'encuadrar': filtro.hab = ''; margenFirma = ''; navegar('#novedades'); render(); break;
+    case 'kpi': if (v === 'abiertas') filtro.estado = filtro.estado === 'abiertas' ? 'todas' : 'abiertas'; else if (v === 'obra') { /* el equipo en obra se ve en la planta */ } else { const t = v as TipoNov; filtro.tipos.has(t) ? filtro.tipos.delete(t) : filtro.tipos.add(t); } render(); break;
+    case 'limpiar': filtro.tipos.clear(); filtro.estado = 'todas'; filtro.esp = ''; filtro.resp = ''; filtro.periodo = 'todo'; filtro.fecha = hoyBog(); if (filtro.hab) { filtro.hab = ''; margenFirma = ''; navegar('#novedades'); } render(); break;
     case 'periodo': filtro.periodo = v as Periodo; render(); break;
     case 'dia': filtro.periodo = 'dia'; filtro.fecha = v; render(); break;
     default: return false;

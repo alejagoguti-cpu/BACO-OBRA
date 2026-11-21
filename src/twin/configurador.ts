@@ -61,6 +61,35 @@ function grupoDe(m: string): GrupoMaterial {
 }
 const etiqueta = (m: string) => m.replace(/^HLF_(REF_|MOB_)?/i, '').replace(/_+/g, ' ').replace(/\b(PBR|P)\b/g, '').trim().toLowerCase().replace(/^./, (c) => c.toUpperCase());
 
+/* Materiales que la exportación de 3ds Max dejó sin mapa (Arnold → glTF): se les pone la textura real del proyecto.
+   Si la malla no trae coordenadas UV se proyectan en caja (en metros), así la veta queda a escala. */
+const TEX_REAL: [RegExp, string, number][] = [[/melamina_?sikuani/i, 'sikuani', 1.2], [/portico_?madera/i, 'nogal', 1.2], [/cortina_?lino/i, 'lino_cortina', 1.0]];
+function uvCaja(geo: THREE.BufferGeometry, metros: number): void {
+  const p = geo.attributes.position, n = geo.attributes.normal; if (!p) return;
+  const uv = new Float32Array(p.count * 2);
+  for (let i = 0; i < p.count; i++) {
+    const ax = Math.abs(n ? n.getX(i) : 0), ay = Math.abs(n ? n.getY(i) : 1), az = Math.abs(n ? n.getZ(i) : 0);
+    const [u, v] = ay >= ax && ay >= az ? [p.getX(i), p.getZ(i)] : ax >= az ? [p.getZ(i), p.getY(i)] : [p.getX(i), p.getY(i)];
+    uv[i * 2] = u / metros; uv[i * 2 + 1] = v / metros;
+  }
+  geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+}
+function texturasFaltantes(mallas: THREE.Mesh[], mats: Map<string, THREE.Material>): void {
+  const tl = new THREE.TextureLoader(); const base = import.meta.env.BASE_URL + 'prototype/tex/';
+  const carga = (f: string, srgb: boolean) => { const t = tl.load(base + f + '.webp'); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 8; if (srgb) t.colorSpace = THREE.SRGBColorSpace; return t; };
+  const hechos = new Map<THREE.Material, number>();
+  for (const [nombre, mt0] of mats) {
+    const mt = mt0 as THREE.MeshStandardMaterial; const r = TEX_REAL.find(([re]) => re.test(nombre)); if (!r || mt.map) continue;
+    mt.map = carga(r[1], true); mt.normalMap = carga(r[1] + '_n', false); mt.roughnessMap = carga(r[1] + '_r', false);
+    mt.color.set('#ffffff'); mt.roughness = 1; mt.metalness = 0; mt.needsUpdate = true; hechos.set(mt, r[2]);
+  }
+  for (const m of mallas) {
+    const ms = (Array.isArray(m.material) ? m.material : [m.material]) as THREE.Material[];
+    const k = ms.map((x) => hechos.get(x)).find((x) => x); if (!k) continue;
+    if (!m.geometry.attributes.uv) { m.geometry = m.geometry.clone(); uvCaja(m.geometry, k); }
+  }
+}
+
 export interface Configurador {
   readonly listo: Promise<void>;
   piezas(): Pieza[];
@@ -171,6 +200,7 @@ export function crearConfigurador(host: HTMLElement, url: string, hab = ''): Con
       if (!grupos.has(clave)) grupos.set(clave, { nodos: [], mallas: [], objs: [] });
       const g = grupos.get(clave)!; if (!g.objs.includes(nodo)) { g.objs.push(nodo); g.nodos.push(nombre); } g.mallas.push(m); pick.push(m);
     });
+    texturasFaltantes(pick, mats);
     for (const [clave, g] of grupos) {
       const d = describir(clave);
       const ranuras = [...new Set(g.mallas.flatMap((m) => (Array.isArray(m.material) ? m.material : [m.material]).map((x) => x.name).filter(Boolean)))];

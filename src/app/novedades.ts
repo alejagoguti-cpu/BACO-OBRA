@@ -43,6 +43,12 @@ async function cargarNombres(ids: string[]): Promise<void> {
 }
 
 export async function iniciarNovedades(): Promise<void> {
+  if (import.meta.env.DEV && perfil?.id === 'dev' && !lista.length) { // solo pruebas locales (?demo)
+    const h = (dh: number) => new Date(Date.now() - dh * 36e5).toISOString();
+    const N = (i: number, tipo: TipoNov, estado: EstadoNov, titulo: string, hab: string | null, esp: string, dh: number): Nov => ({ id: 'demo' + i, codigo: 'N-000' + i, hotel: 'fontana', edificio: 'Torre Suites', piso: '2', habitacion: hab, element_id: null, pos: null, titulo, descripcion: '', tipo, especialidad: esp, prioridad: 'media', estado, responsable: null, fecha_prevista: null, adjuntos: [], created_by: 'dev', created_at: h(dh), updated_by: null, updated_at: h(dh) });
+    lista = [N(1, 'retraso', 'pendiente', 'Llegada de enchape del baño retrasada', '216', 'arq', 2), N(2, 'imprevisto', 'en_proceso', 'Tubería sanitaria choca con viga', '218', 'hid', 5), N(3, 'avance', 'resuelta', 'Cableado de tomas terminado', '214', 'ele', 28), N(4, 'nueva', 'pendiente', 'Revisar nivel de piso en corredor', null, 'arq', 52), N(5, 'incidencia', 'cerrada', 'Vidrio de ducha con despique', '219', 'arq', 80)];
+    cargada = true; avisar(); return;
+  }
   if (!sb || !perfil || canal) return;
   const { data, error } = await sb.from('novedades').select('*').order('created_at', { ascending: false });
   if (!error) lista = (data ?? []) as Nov[];
