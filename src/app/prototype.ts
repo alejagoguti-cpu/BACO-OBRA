@@ -34,11 +34,11 @@ export function mountPrototype(host: HTMLElement): () => void {
         <p class="proto-intro">Un espacio Twin para explorar la propuesta de mobiliario y ensayar sus escenas de Smart Home.</p>
         <div class="proto-source"><span class="proto-source-dot"></span><div><b>Modelo SketchUp real</b><small>Maqueta de habitación Twin · no es un render</small></div></div>
         <div class="proto-list-head"><b>Matriz de mobiliario</b><span>${inventory.length} referencias</span></div>
-        <div class="proto-list">${inventory.map(([code,name,qty])=>`<div class="proto-item"><span>${code}</span><b>${name}</b><small>×${qty}</small></div>`).join('')}</div>
+        <div class="proto-list">${inventory.map(([code,name,qty])=>`<button class="proto-item" data-pact="furniture" data-value="${code}"><span>${code}</span><b>${name}</b><small>×${qty}</small></button>`).join('')}</div>
         <div class="proto-catalog-foot">Fuente: HLF Matriz de Amoblamiento · Habitación Twin</div>
       </aside>
       <main class="proto-stage"><div class="proto-stage-top"><div><span class="proto-overline">MODELO / 3D INTERACTIVO</span><strong>Habitación doble · Twin</strong></div><div class="proto-stage-actions"><button data-pact="reset">Centrar vista</button><span>Arrastra para girar · rueda para acercar</span></div></div>
-        <div class="proto-canvas" id="proto-canvas"><div class="proto-loading" id="proto-loading"><span></span>Cargando geometría SketchUp…</div></div>
+        <div class="proto-canvas" id="proto-canvas"><div class="proto-loading" id="proto-loading"><span></span>Cargando geometría SketchUp…</div><div class="proto-feedback" id="proto-feedback">Arrastra el modelo para descubrir la habitación</div></div>
         <div class="proto-stage-bottom"><span>PROTOTIPO 01 — HOTEL LA FONTANA</span><span>Habitación 216 · Piso 02</span></div>
       </main>
       <aside class="proto-smart"><div class="proto-overline">02 / EXPERIENCIA</div><h2>Smart<br>Home<span>↗</span></h2>
@@ -54,32 +54,36 @@ export function mountPrototype(host: HTMLElement): () => void {
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
   renderer.setPixelRatio(Math.min(devicePixelRatio, 1.75));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.clippingPlanes = [new THREE.Plane(new THREE.Vector3(1,0,0),-2.5),new THREE.Plane(new THREE.Vector3(0,0,-1),-.35),new THREE.Plane(new THREE.Vector3(0,-1,0),1.65)];
+  renderer.localClippingEnabled = true;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.35;
   canvas.append(renderer.domElement);
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(42, 1, .05, 100);
   const ambient = new THREE.AmbientLight(0xffffff, 2.0); scene.add(ambient);
-  const sun = new THREE.DirectionalLight(0xfff3df, 2.2); sun.position.set(-3, -5, 9); scene.add(sun);
-  const fill = new THREE.DirectionalLight(0xd8e7f3, 1.2); fill.position.set(8, 7, 6); scene.add(fill);
+  const sun = new THREE.DirectionalLight(0xfff3df, 2.2); sun.position.set(-3, 9, 5); scene.add(sun);
+  const fill = new THREE.DirectionalLight(0xd8e7f3, 1.2); fill.position.set(8, 6, -7); scene.add(fill);
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true; controls.dampingFactor = .08;
   controls.minDistance = 3.5; controls.maxDistance = 24;
   controls.maxPolarAngle = Math.PI * .48;
   let center = new THREE.Vector3(4,4,1), radius = 7;
-  function resetCamera() { camera.position.copy(center).add(new THREE.Vector3(-radius*.4, -radius*.8, radius*.95)); controls.target.copy(center); controls.update(); }
+  function resetCamera() { camera.position.copy(center).add(new THREE.Vector3(-radius*.55, radius*1.2, radius*.75)); controls.target.copy(center); controls.update(); }
   resetCamera();
   let alive=true, raf=0;
   const resize = new ResizeObserver(() => { const w=canvas.clientWidth,h=canvas.clientHeight; if (!w||!h) return; camera.aspect=w/h; camera.updateProjectionMatrix(); renderer.setSize(w,h); });
   resize.observe(canvas);
   const state: Record<string,boolean> = {light:true,climate:true,curtain:false,tv:false,lock:false};
+  function feedback(message:string){const el=host.querySelector<HTMLElement>('#proto-feedback');if(!el)return;el.textContent=message;el.classList.remove('pop');void el.offsetWidth;el.classList.add('pop')}
   function sync() { ambient.intensity=state.light?2:.65; sun.intensity=state.curtain?1.1:2.2; renderer.toneMappingExposure=state.light?1.35:.85;
     host.querySelectorAll<HTMLButtonElement>('[data-pact="toggle"]').forEach(b=>b.setAttribute('aria-pressed',String(state[b.dataset.value!]))) }
   host.addEventListener('click', onClick);
   function onClick(e:Event) { const b=(e.target as HTMLElement).closest<HTMLButtonElement>('[data-pact]'); if(!b)return;
     if(b.dataset.pact==='reset') resetCamera();
-    if(b.dataset.pact==='toggle'){const k=b.dataset.value!;state[k]=!state[k];sync()}
-    if(b.dataset.pact==='scene') { const name=b.dataset.value; Object.assign(state,name==='rest'?{light:false,climate:true,curtain:true,tv:false,lock:true}:name==='work'?{light:true,climate:true,curtain:false,tv:false,lock:false}:{light:true,climate:true,curtain:false,tv:false,lock:false}); sync();host.querySelectorAll<HTMLButtonElement>('[data-pact="scene"]').forEach(x=>x.setAttribute('aria-pressed',String(x===b))) }
+    if(b.dataset.pact==='toggle'){const k=b.dataset.value!;state[k]=!state[k];sync();feedback(`${devices.find(d=>d[0]===k)?.[1]} · ${state[k]?'activado':'desactivado'} (demo)`)}
+    if(b.dataset.pact==='scene') { const name=b.dataset.value; Object.assign(state,name==='rest'?{light:false,climate:true,curtain:true,tv:false,lock:true}:name==='work'?{light:true,climate:true,curtain:false,tv:false,lock:false}:{light:true,climate:true,curtain:false,tv:false,lock:false}); sync();host.querySelectorAll<HTMLButtonElement>('[data-pact="scene"]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));feedback(`Escena ${b.textContent?.trim()} aplicada`) }
+    if(b.dataset.pact==='furniture'){host.querySelectorAll<HTMLButtonElement>('[data-pact="furniture"]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));const item=inventory.find(x=>x[0]===b.dataset.value);if(item)feedback(`${item[0]} · ${item[1]} · ${item[2]} unidades`)}
   }
   const temp=host.querySelector<HTMLInputElement>('#proto-temp')!; temp.addEventListener('input',()=>{host.querySelector('#proto-temp-value')!.textContent=temp.value+' °C'});
   const loader = new GLTFLoader();
@@ -87,7 +91,7 @@ export function mountPrototype(host: HTMLElement): () => void {
     if(!alive)return;
     gltf.scene.updateMatrixWorld(true);
     gltf.scene.traverse(o=>{if(!(o instanceof THREE.Mesh))return;const b=new THREE.Box3().setFromObject(o),s=b.getSize(new THREE.Vector3()),c=b.getCenter(new THREE.Vector3());
-      if((b.min.z>1.85&&b.max.z>2.3&&(s.x>1.5||s.y>1.5))||(s.z>1.35&&((c.x<2.7&&s.y>1)||(c.y<.4&&s.x>1))))o.visible=false});
+      if((b.min.y>1.85&&b.max.y>2.3&&(s.x>1.5||s.z>1.5))||(s.y>1.35&&((c.x<2.7&&s.z>1)||(c.z>-.4&&s.x>1))))o.visible=false});
     scene.add(gltf.scene);
     const box=new THREE.Box3().setFromObject(gltf.scene); center=box.getCenter(new THREE.Vector3());const size=box.getSize(new THREE.Vector3());radius=Math.max(size.x,size.y,size.z)*.8;resetCamera();
     host.querySelector('#proto-loading')?.remove();
